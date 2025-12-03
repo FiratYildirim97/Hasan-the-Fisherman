@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { PlayerStats, CatchItem, Quest, GameState, WeatherType, SavedGame, PediaEntry, FishBase, ItemType, FloatingText, CatchVisual, LifetimeStats, TournamentState, Bounty, FishVisual, MarketTrend } from './types';
+import { 
+  PlayerStats, CatchItem, Quest, GameState, WeatherType, SavedGame, PediaEntry, 
+  FishBase, ItemType, FloatingText, CatchVisual, LifetimeStats, TournamentState, 
+  Bounty, FishVisual, MarketTrend 
+} from './types';
 import { RODS, FISH_DB, BAITS, BOBBERS, DECORATIONS, CHARMS, ACHIEVEMENTS, LOCATIONS } from './constants';
 
 interface GameContextType {
@@ -164,7 +168,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [ownedCharms, setOwnedCharms] = useState<string[]>([]);
   const [mapParts, setMapParts] = useState(0);
   const [spinAvailable, setSpinAvailable] = useState(0); 
-  const [settings, setSettings] = useState({ sortMode: 'recent' as const, bulkSellSafe: false });
+  const [settings, setSettings] = useState<{ sortMode: 'recent' | 'value' | 'weight'; bulkSellSafe: boolean }>({ sortMode: 'recent', bulkSellSafe: false });
   const [newsTicker, setNewsTicker] = useState(NEWS_HEADLINES[0]);
   const [offlineEarningsModal, setOfflineEarningsModal] = useState<number | null>(null);
 
