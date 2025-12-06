@@ -212,6 +212,8 @@ export interface MysteryMerchant {
 export type RadioStation = 'off' | 'nature' | 'lofi';
 
 export interface RestaurantState {
+  isUnlocked: boolean;
+  level: number;
   ingredients: {
     vegetables: number; // Sebze
     meze: number; // Meze tabağı
@@ -229,6 +231,15 @@ export interface Customer {
   patience: number;
   maxPatience: number;
   reward: number;
+}
+
+export interface GameEvent {
+  id: 'frenzy' | 'gold_rush' | 'giant_fish' | 'calm_waters';
+  name: string;
+  description: string;
+  duration: number; // milliseconds
+  startTime: number;
+  color: string;
 }
 
 export interface SavedGame {

@@ -1,5 +1,4 @@
 
-
 import { Rod, Location, Bait, Skill, FishBase, ItemType, Bobber, Decoration, Achievement, Charm, PetBase, PrestigeUpgrade, CraftingRecipe } from './types';
 
 export const PETS: PetBase[] = [

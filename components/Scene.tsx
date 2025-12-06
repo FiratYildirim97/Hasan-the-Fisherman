@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../GameContext';
 import { RODS, LOCATIONS, BOBBERS } from '../constants';
@@ -43,11 +44,10 @@ export const Scene: React.FC = () => {
   return (
     <div className="relative flex-1 w-full overflow-hidden bg-slate-900 select-none" onClick={handleSceneClick}>
       <LocationScene 
-        locId={stats.locId} 
+        location={location}
         theme={theme}
         weather={weather}
         timeOfDay={timeOfDay}
-        biome={location.biome}
       />
       {ripples.map(r => (
           <div key={r.id} className="absolute w-4 h-4 border-2 border-white/50 rounded-full animate-[splash_1s_ease-out] pointer-events-none" style={{ left: `${r.x}%`, top: `${r.y}%` }} />
@@ -173,52 +173,46 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
   );
 };
 
-const LocationScene: React.FC<{ locId: number, theme: { sky: string[], water: string[], sun: string }, weather: WeatherType, timeOfDay: string, biome: string }> = ({ locId, theme, weather, timeOfDay, biome }) => {
+const LocationScene: React.FC<{ location: any, theme: { sky: string[], water: string[], sun: string }, weather: WeatherType, timeOfDay: string }> = ({ location, theme, weather, timeOfDay }) => {
+  // Construct dynamic background image URL based on location name, biome and time of day
+  // Using pollination.ai prompt to generate unique visuals without 60 hardcoded URLs
+  const timeDesc = timeOfDay === 'night' ? 'night time, starry sky, moon, dark atmosphere' : timeOfDay === 'sunset' ? 'sunset, golden hour, orange sky' : 'day time, sunny, bright, vibrant colors';
+  const biomeDesc = location.biome === 'ice' ? 'frozen, snowy, icebergs' : location.biome === 'tropical' ? 'tropical paradise, palm trees' : location.biome === 'ocean' ? 'open ocean, endless water' : 'nature, forest, trees';
+  
+  // Use location ID as seed to ensure consistency for that location
+  const bgUrl = `https://image.pollinations.ai/prompt/beautiful scenic landscape of ${location.name}, ${biomeDesc}, ${timeDesc}, digital art, highly detailed, game background, atmospheric?width=720&height=1280&nologo=true&seed=${location.id + (timeOfDay === 'night' ? 100 : 0)}`;
+
   return (
-    <div className="absolute inset-0 w-full h-full" style={{ background: `linear-gradient(to bottom, ${theme.sky[0]}, ${theme.sky[1]})` }}>
-       <svg className="w-full h-full absolute inset-0 z-0" preserveAspectRatio="none">
+    <div className="absolute inset-0 w-full h-full bg-slate-900">
+       {/* Dynamic Background Image */}
+       <img 
+         src={bgUrl} 
+         alt={location.name} 
+         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+         style={{ opacity: 0.8 }} // Slight transparency to blend with UI
+       />
+       
+       {/* Overlay Gradient to ensure text readability */}
+       <div className={`absolute inset-0 bg-gradient-to-b ${timeOfDay === 'night' ? 'from-black/60 via-transparent to-black/80' : 'from-blue-900/30 via-transparent to-black/60'}`} />
+
+       <svg className="w-full h-full absolute inset-0 z-10" preserveAspectRatio="none">
           <defs>
-             <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={theme.water[0]} stopOpacity="0.8"/><stop offset="100%" stopColor={theme.water[1]} stopOpacity="0.95"/></linearGradient>
+             <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
+               <stop offset="0%" stopColor={theme.water[0]} stopOpacity="0.7"/>
+               <stop offset="100%" stopColor={theme.water[1]} stopOpacity="0.9"/>
+             </linearGradient>
              <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
           </defs>
-          <circle cx="85%" cy="15%" r={timeOfDay === 'night' ? 30 : 50} fill={timeOfDay === 'night' ? '#f1f5f9' : theme.sun} filter="url(#glow)" opacity="0.9">{timeOfDay === 'night' && <animate attributeName="opacity" values="0.8;1;0.8" dur="4s" repeatCount="indefinite" />}</circle>
-          {biome === 'freshwater' && (
-             <g>
-                <path d="M-50,550 Q150,300 450,550" fill="#1e293b" opacity="0.6" />
-                <path d="M0,450 Q100,250 200,450" fill="#0f172a" opacity="0.8" />
-                <path d="M300,450 Q400,250 500,450" fill="#0f172a" opacity="0.7" />
-                <path d="M100,450 L120,350 L140,450" fill="#064e3b" />
-                <path d="M50,480 L70,380 L90,480" fill="#064e3b" />
-             </g>
-          )}
-          {biome === 'tropical' && (
-             <g>
-                <path d="M50,500 Q150,450 250,500" fill="#d4d404" opacity="0.9" />
-                <path d="M150,450 Q160,350 200,300" stroke="#8b4513" strokeWidth="5" fill="none" />
-                <path d="M200,300 L150,350 M200,300 L250,350 M200,300 L200,250" stroke="#16a34a" strokeWidth="3" />
-             </g>
-          )}
-          {biome === 'coastal' && (
-             <g>
-                <path d="M300,500 L350,300 L450,500" fill="#475569" />
-                <path d="M250,500 L300,400 L350,500" fill="#334155" />
-             </g>
-          )}
-          {biome === 'ice' && (
-             <g>
-                <path d="M0,500 L100,300 L200,500" fill="#e2e8f0" opacity="0.9" />
-                <path d="M150,500 L250,250 L350,500" fill="#cbd5e1" opacity="0.8" />
-                <path d="M300,500 L400,350 L500,500" fill="#94a3b8" opacity="0.9" />
-             </g>
-          )}
-          {biome === 'ocean' && (
-             <g>
-                <rect x="0" y="450" width="100%" height="50" fill="#1e3a8a" opacity="0.3" />
-             </g>
-          )}
+          
+          {/* Water Surface - Kept from original to ensure fishing bobber makes sense */}
           <rect x="0" y="65%" width="100%" height="35%" fill="url(#waterGrad)" />
+          
+          {/* Sun/Moon Reflection on Water */}
+          <ellipse cx="85%" cy="70%" rx="30" ry="5" fill={theme.sun} opacity="0.3" filter="url(#glow)" className="animate-pulse" />
        </svg>
-       <svg className="w-full h-full absolute inset-0 z-10 pointer-events-none" preserveAspectRatio="none">
+
+       {/* Weather Effects Layer */}
+       <svg className="w-full h-full absolute inset-0 z-20 pointer-events-none" preserveAspectRatio="none">
           {weather !== WeatherType.SUNNY && <g>{[...Array(40)].map((_, i) => (<line key={i} x1={Math.random() * 100 + "%"} y1={-20} x2={Math.random() * 100 - 10 + "%"} y2={120 + "%"} stroke="white" strokeWidth={weather === WeatherType.STORM ? 2 : 1} opacity={0.4} className="animate-[fall_0.5s_linear_infinite]" style={{ animationDelay: `${Math.random()}s`, animationDuration: `${0.5 + Math.random() * 0.3}s` }} />))}</g>}
        </svg>
     </div>

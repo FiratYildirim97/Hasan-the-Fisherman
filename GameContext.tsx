@@ -1,8 +1,9 @@
+
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { 
   PlayerStats, CatchItem, Quest, GameState, WeatherType, SavedGame, PediaEntry, 
   FishBase, ItemType, FloatingText, CatchVisual, LifetimeStats, TournamentState, 
-  Bounty, FishVisual, MarketTrend, OwnedPet, CraftingRecipe, MysteryMerchant, RadioStation
+  Bounty, FishVisual, MarketTrend, OwnedPet, CraftingRecipe, MysteryMerchant, RadioStation, RestaurantState, Customer, GameEvent
 } from './types';
 import { RODS, FISH_DB, BAITS, BOBBERS, DECORATIONS, CHARMS, ACHIEVEMENTS, LOCATIONS, PETS, PRESTIGE_UPGRADES, CRAFTING_RECIPES } from './constants';
 
@@ -114,6 +115,17 @@ interface GameContextType {
   
   dailyRewardPopup: { active: boolean; streak: number; reward: number } | null;
   claimDailyReward: () => void;
+
+  restaurant: RestaurantState;
+  activeCustomers: Customer[];
+  buyIngredient: (type: 'vegetables' | 'meze' | 'raki' | 'oil', amount: number, cost: number) => void;
+  serveCustomer: (customerId: number, fishId: string) => void;
+  rejectCustomer: (customerId: number) => void;
+  isRestaurantOpen: boolean;
+  setIsRestaurantOpen: (open: boolean) => void;
+  unlockRestaurant: () => void;
+
+  activeEvent: GameEvent | null;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -127,6 +139,13 @@ export const useGame = () => {
 const INITIAL_STATS: PlayerStats = {
   money: 0, xp: 0, level: 1, rodId: 0, rodHp: 10, locId: 0, bagLimit: 5, aquaLimit: 7, baitId: null, bobberId: 'basic', bankBalance: 0,
   pearls: 0, prestigeLevel: 0, wormFarmLevel: 0, dailyStreak: 0, lastRewardTime: 0
+};
+
+const INITIAL_RESTAURANT: RestaurantState = {
+  isUnlocked: false,
+  level: 1,
+  ingredients: { vegetables: 0, meze: 0, raki: 0, oil: 0 },
+  reputation: 0
 };
 
 const INITIAL_LIFETIME: LifetimeStats = {
@@ -206,6 +225,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [prestigeUpgrades, setPrestigeUpgrades] = useState<Record<string, number>>({});
   const [mysteryMerchant, setMysteryMerchant] = useState<MysteryMerchant | null>(null);
 
+  // Restaurant State
+  const [restaurant, setRestaurant] = useState<RestaurantState>(INITIAL_RESTAURANT);
+  const [activeCustomers, setActiveCustomers] = useState<Customer[]>([]);
+  const [isRestaurantOpen, setIsRestaurantOpen] = useState(false);
+
+  // Global Event State
+  const [activeEvent, setActiveEvent] = useState<GameEvent | null>(null);
+
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
   const [celebrationFish, setCelebrationFish] = useState<CatchItem | null>(null);
   const [catchVisual, setCatchVisual] = useState<CatchVisual | null>(null);
@@ -281,7 +308,203 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) { }
   }, [isMuted, combo]);
 
-  // RADIO LOGIC
+  // EVENT SYSTEM LOGIC
+  useEffect(() => {
+      // Event Trigger Loop (Check every minute)
+      const eventLoop = setInterval(() => {
+          if (!activeEvent && Math.random() < 0.15) { // 15% chance every minute
+              const eventTypes: GameEvent[] = [
+                  { id: 'frenzy', name: '🌊 Balık Sürüsü', description: 'Balıklar çok hızlı vuruyor!', duration: 60000, startTime: Date.now(), color: 'text-blue-400' },
+                  { id: 'gold_rush', name: '💰 Altın Akını', description: 'Satış fiyatları x2!', duration: 60000, startTime: Date.now(), color: 'text-yellow-400' },
+                  { id: 'giant_fish', name: '🐋 Devlerin Göçü', description: 'Balıklar %50 daha ağır!', duration: 90000, startTime: Date.now(), color: 'text-purple-400' },
+                  { id: 'calm_waters', name: '✨ Sakin Sular', description: 'Balık tutmak çok kolaylaştı!', duration: 60000, startTime: Date.now(), color: 'text-cyan-400' }
+              ];
+              const randomEvent = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+              setActiveEvent(randomEvent);
+              playSound('lvl');
+              showToast(`OLAY BAŞLADI: ${randomEvent.name}`, "text-white", randomEvent.description);
+          }
+      }, 60000);
+
+      // Event Expiry Loop (Check every second)
+      const expiryLoop = setInterval(() => {
+          if (activeEvent) {
+              if (Date.now() > activeEvent.startTime + activeEvent.duration) {
+                  setActiveEvent(null);
+                  showToast("Etkinlik Sona Erdi", "text-slate-400");
+              }
+          }
+      }, 1000);
+
+      return () => {
+          clearInterval(eventLoop);
+          clearInterval(expiryLoop);
+      };
+  }, [activeEvent, playSound, showToast]);
+
+  // ... (Rest of existing restaurant logic, unlockRestaurant etc.)
+  const buyIngredient = (type: 'vegetables' | 'meze' | 'raki' | 'oil', amount: number, cost: number) => {
+      if (stats.money >= cost) {
+          setStats(prev => ({ ...prev, money: prev.money - cost }));
+          setRestaurant(prev => ({
+              ...prev,
+              ingredients: {
+                  ...prev.ingredients,
+                  [type]: prev.ingredients[type] + amount
+              }
+          }));
+          playSound('cash');
+          showToast(`Satın alındı!`, "text-green-400");
+      } else {
+          showToast("Yetersiz Bakiye", "text-red-400");
+          playSound('fail');
+      }
+  };
+
+  const unlockRestaurant = () => {
+      const COST = 30000;
+      if (stats.level < 5) {
+          showToast("Seviye 5 Gerekli!", "text-red-400");
+          return;
+      }
+      if (stats.money >= COST) {
+          setStats(prev => ({ ...prev, money: prev.money - COST }));
+          setRestaurant(prev => ({ ...prev, isUnlocked: true }));
+          playSound('success');
+          showToast("Restoran Satın Alındı!", "text-cyan-400", "İşletmeye Başla!");
+      } else {
+          showToast(`Yetersiz Bakiye (${COST.toLocaleString()} TL)`, "text-red-400");
+          playSound('fail');
+      }
+  };
+
+  useEffect(() => {
+      // Customer Spawner (Only if unlocked)
+      if (!isRestaurantOpen || !restaurant.isUnlocked) return;
+      
+      const spawnCustomer = () => {
+          if (activeCustomers.length >= 4) return;
+          
+          const names = ["Hüseyin Abi", "Müjgan Abla", "Balıkçı Nuri", "Turist John", "Gurme Vedat", "Mahalleli Ayşe", "Dayı", "Kaptan Jack"];
+          const orders = ['grilled', 'sandwich', 'raki_table'] as const;
+          
+          const isVip = Math.random() < (0.05 + (restaurant.reputation / 1000));
+          const diff = Math.min(5, 1 + Math.floor(restaurant.reputation / 100));
+          const orderType = Math.random() < 0.2 ? 'raki_table' : Math.random() < 0.6 ? 'grilled' : 'sandwich';
+          
+          const customer: Customer & { isVip?: boolean } = {
+              id: Date.now() + Math.random(),
+              name: isVip ? `⭐ GURME ${names[Math.floor(Math.random() * names.length)]}` : names[Math.floor(Math.random() * names.length)],
+              order: orderType,
+              fishReq: {
+                  rarity: orderType === 'raki_table' ? 3 : orderType === 'grilled' ? 2 : 1,
+                  minWeight: 1 + Math.random() * diff
+              },
+              patience: 100,
+              maxPatience: 100,
+              reward: 0,
+              isVip: isVip
+          };
+          
+          setActiveCustomers(prev => [...prev, customer]);
+          if (isVip) {
+              playSound('success');
+              showToast("GURME GELDİ!", "text-yellow-300", "Özel Servis Yap!");
+          } else {
+              playSound('click'); 
+          }
+      };
+
+      const spawnRate = Math.max(1000, 3000 - (restaurant.reputation * 5));
+      
+      const interval = setInterval(() => {
+          if (Math.random() < 0.4) spawnCustomer();
+          setActiveCustomers(prev => prev.map(c => ({
+              ...c, 
+              patience: c.patience - (c['isVip'] ? 4 : 2)
+          })).filter(c => {
+              if (c.patience <= 0) {
+                  setRestaurant(r => ({...r, reputation: Math.max(0, r.reputation - 10)})); // Bigger penalty
+                  showToast("Müşteri Sinirlendi!", "text-red-400");
+                  return false; 
+              }
+              return true;
+          }));
+
+      }, spawnRate);
+
+      return () => clearInterval(interval);
+  }, [isRestaurantOpen, restaurant.isUnlocked, activeCustomers.length, restaurant.reputation, playSound, showToast]);
+
+  const serveCustomer = (customerId: number, fishId: string) => {
+      const customer = activeCustomers.find(c => c.id === customerId) as (Customer & { isVip?: boolean }) | undefined;
+      const fish = bag.find(f => f.id === fishId);
+      if (!customer || !fish) return;
+
+      const ings = restaurant.ingredients;
+      let costVeg = 0, costOil = 0, costRaki = 0, costMeze = 0;
+      let multiplier = 1;
+
+      if (customer.order === 'sandwich') { costVeg = 1; multiplier = 2.5; }
+      if (customer.order === 'grilled') { costOil = 1; costVeg = 1; multiplier = 3.5; }
+      if (customer.order === 'raki_table') { costRaki = 1; costMeze = 2; costVeg = 2; costOil = 1; multiplier = 8.0; }
+
+      if (ings.vegetables < costVeg || ings.oil < costOil || ings.raki < costRaki || ings.meze < costMeze) {
+          showToast("Malzemeler Eksik!", "text-red-400");
+          return;
+      }
+
+      if (fish.rarity < customer.fishReq.rarity || fish.weight < customer.fishReq.minWeight) {
+          showToast("Müşteri bu balığı beğenmedi!", "text-orange-400");
+          return;
+      }
+
+      setBag(prev => prev.filter(f => f.id !== fishId));
+      
+      let reputationGain = customer.isVip ? 10 : 2;
+      let newReputation = restaurant.reputation + reputationGain;
+      let newLevel = restaurant.level;
+      if (newReputation >= newLevel * 100) {
+          newLevel++;
+          playSound('lvl');
+          showToast("Restoran Seviye Atladı!", "text-yellow-400");
+      }
+      
+      setRestaurant(prev => ({
+          ...prev,
+          ingredients: {
+              vegetables: prev.ingredients.vegetables - costVeg,
+              oil: prev.ingredients.oil - costOil,
+              raki: prev.ingredients.raki - costRaki,
+              meze: prev.ingredients.meze - costMeze,
+          },
+          reputation: newReputation,
+          level: 1 + Math.floor(newReputation / 100)
+      }));
+      setActiveCustomers(prev => prev.filter(c => c.id !== customerId));
+
+      let reward = Math.floor(fish.value * multiplier);
+      if (customer.isVip) reward *= 3; 
+
+      let tip = 0;
+      if (customer.patience > 80) tip += Math.floor(reward * 0.3);
+      else if (customer.patience > 50) tip += Math.floor(reward * 0.15);
+      if (restaurant.reputation > 50) tip += Math.floor(restaurant.reputation * 0.5);
+      
+      const totalReward = reward + tip;
+
+      setStats(prev => ({ ...prev, money: prev.money + totalReward, xp: prev.xp + (customer.isVip ? 200 : 50) }));
+      playSound('cash');
+      showToast("Sipariş Tamamlandı!", "text-green-400", `+${reward} TL ${tip > 0 ? `(+${tip} Bahşiş)` : ''}`);
+      spawnText(`+${totalReward} TL`, "text-yellow-400", 50, 50);
+  };
+
+  const rejectCustomer = (customerId: number) => {
+      setActiveCustomers(prev => prev.filter(c => c.id !== customerId));
+      setRestaurant(prev => ({ ...prev, reputation: Math.max(0, prev.reputation - 2) }));
+  };
+
+  // ... (Existing Radio Logic etc)
   useEffect(() => {
     radioNodesRef.current.forEach(node => {
         try { node.stop(); } catch {}
@@ -313,27 +536,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      lastOut = data[i];
                      data[i] *= 3.5; 
                  }
-                 
                  const noise = ctx.createBufferSource();
                  noise.buffer = buffer;
                  noise.loop = true;
-                 
                  const filter = ctx.createBiquadFilter();
                  filter.type = 'lowpass';
                  filter.frequency.value = 400;
-
                  const lfo = ctx.createOscillator();
                  lfo.type = 'sine';
                  lfo.frequency.value = 0.1;
                  const lfoGain = ctx.createGain();
                  lfoGain.gain.value = 300;
-                 
                  lfo.connect(lfoGain);
                  lfoGain.connect(filter.frequency);
-                 
                  noise.connect(filter);
                  filter.connect(masterGain);
-                 
                  noise.start();
                  lfo.start();
                  radioNodesRef.current.push(noise, lfo);
@@ -343,17 +560,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      const osc = ctx.createOscillator();
                      osc.type = 'triangle';
                      osc.frequency.value = freq;
-                     
                      const gain = ctx.createGain();
                      gain.gain.value = 0.1 / chords.length;
-                     
                      const lfo = ctx.createOscillator();
                      lfo.frequency.value = 0.5 + Math.random();
                      const lfoGain = ctx.createGain();
                      lfoGain.gain.value = 2; 
                      lfo.connect(lfoGain);
                      lfoGain.connect(osc.frequency);
-
                      osc.connect(gain);
                      gain.connect(masterGain);
                      osc.start();
@@ -363,14 +577,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         }
     } catch (e) { console.error("Radio error", e); }
-
   }, [radioStation, isMuted]);
 
   const cycleRadio = () => {
       if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
           audioCtxRef.current.resume().catch(() => {});
       }
-
       setRadioStation(prev => {
           if (prev === 'off') return 'nature';
           if (prev === 'nature') return 'lofi';
@@ -824,6 +1036,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSettings(currentSettings);
       setPedia(currentPedia);
       setPrestigeUpgrades(currentUpgrades);
+      setRestaurant(INITIAL_RESTAURANT);
 
       generateQuests(0);
       
@@ -1135,6 +1348,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data.prestigeUpgrades) setPrestigeUpgrades(data.prestigeUpgrades);
         
         if (data.radioStation) setRadioStation(data.radioStation); 
+        
+        // Load Restaurant state if exists, else merge with default (locked)
+        if (data.restaurant) {
+            setRestaurant({
+                ...INITIAL_RESTAURANT,
+                ...data.restaurant,
+                // Ensure legacy saves get locked status if undefined
+                isUnlocked: data.restaurant.isUnlocked ?? false,
+                level: data.restaurant.level ?? 1
+            });
+        }
 
         setOwnedPets(loadedPets);
 
@@ -1149,10 +1373,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       stats, bag, aquarium, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, skills, pedia, quests, questCooldown,
       lastLogin: Date.now(), lifetimeStats, filterExpiry, rodMastery, ecologyScore, buffs,
       autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, ownedPets, prestigeUpgrades,
-      radioStation
+      radioStation, restaurant
     };
     localStorage.setItem("balikciHasanSave_v6", JSON.stringify(data));
-  }, [stats, bag, aquarium, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, skills, pedia, quests, questCooldown, lifetimeStats, filterExpiry, rodMastery, ecologyScore, buffs, autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, ownedPets, prestigeUpgrades, radioStation]);
+  }, [stats, bag, aquarium, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, skills, pedia, quests, questCooldown, lifetimeStats, filterExpiry, rodMastery, ecologyScore, buffs, autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, ownedPets, prestigeUpgrades, radioStation, restaurant]);
 
   const cleanAquarium = () => {
     playSound('click');
@@ -1191,10 +1415,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTimeout(() => {
       setGameState(GameState.WAITING);
       let waitTime = critCast ? 200 : (2000 + Math.random() * 3000); 
-      if (weather === WeatherType.RAIN) {
-          waitTime *= 0.7;
-          if (!critCast) spawnText("Hızlı Vuruş! (Yağmur)", "text-blue-300", 50, 40);
-      }
+      if (weather === WeatherType.RAIN) waitTime *= 0.7;
+      if (activeEvent?.id === 'frenzy') waitTime *= 0.5; // Frenzy event reduce wait time
       
       setTimeout(() => {
         setGameState(GameState.BITE);
@@ -1306,7 +1528,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
              setCombo(0);
           }
           
-          const baseW = (Math.random() * 5 + 1) * (1 + skills['biology'] * 0.2) * (1 + stats.locId * 0.2);
+          let baseW = (Math.random() * 5 + 1) * (1 + skills['biology'] * 0.2) * (1 + stats.locId * 0.2);
+          if (activeEvent?.id === 'giant_fish') baseW *= 1.5; // Giant Fish event
+
           const finalWeight = Number(baseW.toFixed(2));
           
           const isShiny = Math.random() < 0.005; 
@@ -1432,12 +1656,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const petMoneyBonus = getPetBonus('money');
     const prestigeMoneyBonus = getPrestigeBonus('money');
     const marketPriceMult = marketMultipliers[item.name] || 1; 
+    const eventBonus = activeEvent?.id === 'gold_rush' ? 2 : 1; // Gold Rush Event
 
     let basePrice = Math.floor(item.value * (1 + skills['haggle'] * 0.1));
     if (petMoneyBonus > 0) basePrice = Math.floor(basePrice * (1 + petMoneyBonus));
     if (prestigeMoneyBonus > 0) basePrice = Math.floor(basePrice * (1 + prestigeMoneyBonus));
     
-    basePrice = Math.floor(basePrice * marketPriceMult);
+    basePrice = Math.floor(basePrice * marketPriceMult * eventBonus);
 
     const finalPrice = Math.floor(basePrice * comboMultiplier * trendBonus * ecoBonus);
 
@@ -1459,6 +1684,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const ecoBonus = ecologyScore >= 100 ? 1.2 : 1;
     const petMoneyBonus = getPetBonus('money');
     const prestigeMoneyBonus = getPrestigeBonus('money');
+    const eventBonus = activeEvent?.id === 'gold_rush' ? 2 : 1; // Gold Rush Event
     
     const itemsToSell = settings.bulkSellSafe ? bag.filter(i => i.rarity < 3 && i.type !== ItemType.TREASURE) : bag;
     
@@ -1476,6 +1702,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
            if (petMoneyBonus > 0) val *= (1 + petMoneyBonus);
            if (prestigeMoneyBonus > 0) val *= (1 + prestigeMoneyBonus);
            val *= marketPriceMult;
+           val *= eventBonus;
 
            total += Math.floor(val * comboMultiplier * trendBonus * ecoBonus);
        } else {
@@ -1577,7 +1804,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ownedPets, buyPet, feedPet, prestigeUpgrades, doPrestige, buyPrestigeUpgrade, calculatePrestigePearls,
       donateFish, craftItem, buyMerchantItem,
       castRod, reelIn, sellItem, useItem, sellAll, recycleJunk, buyItem, equipRod, equipBobber, toggleDecor, repairRod, travel, claimQuest, moveToAqua, upgradeSkill, resetGame, startNewGame, closeCelebration, playSound, toggleMute, getRank, generateQuests, startDiving, endDiving,
-      radioStation, cycleRadio, hookFish, playSlotMachine, dailyRewardPopup, claimDailyReward
+      radioStation, cycleRadio, hookFish, playSlotMachine, dailyRewardPopup, claimDailyReward,
+      restaurant, activeCustomers, buyIngredient, serveCustomer, rejectCustomer, isRestaurantOpen, setIsRestaurantOpen, unlockRestaurant,
+      activeEvent
     }}>
       {children}
     </GameContext.Provider>
