@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../GameContext';
 import { RODS, BAITS, BOBBERS, DECORATIONS, CHARMS, SKILLS, LOCATIONS, FISH_DB, ACHIEVEMENTS, PETS, PRESTIGE_UPGRADES, CRAFTING_RECIPES } from '../constants';
-import { Briefcase, ShoppingCart, Map, BookOpen, ScrollText, Anchor, Settings, X, Fish, Recycle, Volume2, VolumeX, Trophy, Crown, Target, TrendingUp, Sparkles, Droplets, Zap, Utensils, RefreshCw, Landmark, SlidersHorizontal, ArrowUpDown, Bell, Waves, PawPrint, Star, Hammer, Gem, Radio, Music, Dices, CalendarCheck, Menu, ChefHat, ShoppingBag, Store } from 'lucide-react';
+import { Briefcase, ShoppingCart, Map, BookOpen, ScrollText, Anchor, Settings, X, Fish, Recycle, Volume2, VolumeX, Trophy, Crown, Target, TrendingUp, Sparkles, Droplets, Zap, Utensils, RefreshCw, Landmark, SlidersHorizontal, ArrowUpDown, Bell, Waves, PawPrint, Star, Hammer, Gem, Radio, Music, Dices, CalendarCheck, Menu, ChefHat, ShoppingBag, Store, Info, HandHeart } from 'lucide-react';
 import { Modal } from './Modal';
 import { ItemType, CatchItem, FishVisual } from '../types';
 import { FishRenderer } from './Scene';
 
+// ... (Existing Helper Components: Section, ShopItem, StatRow, SidebarBtn)
 const Section: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-2 mb-4">
     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1 border-b border-slate-800 pb-1 mb-2">{title}</h3>
@@ -54,12 +55,20 @@ const StatRow: React.FC<{ label: string, value: string | number, icon: React.Rea
   </div>
 );
 
+const SidebarBtn = ({ icon, label, onClick, badge }: any) => (
+    <button onClick={() => { onClick(); }} className="w-full flex items-center gap-4 p-3 bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700 rounded-xl transition-all group mb-2 active:scale-95">
+        <div className="text-slate-400 group-hover:text-cyan-400 transition-colors">{icon}</div>
+        <div className="font-bold text-slate-200 text-sm flex-1 text-left">{label}</div>
+        {badge && <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">{badge}</div>}
+    </button>
+);
+
 export const UIOverlay: React.FC = () => {
   const { 
     stats, bag, castRod, gameState, ownedRods, ownedBobbers, ownedDecor, activeDecor, unlockedLocs, skills, achievements, dailyFortune,
     sellItem, sellAll, recycleJunk, buyItem, equipRod, equipBobber, toggleDecor, repairRod, travel, quests, claimQuest, aquarium, moveToAqua, upgradeSkill, pedia,
     isMuted, toggleMute, lifetimeStats, getRank,
-    combo, tournament, bounty, closeTournamentResult, filterExpiry, cleanAquarium,
+    combo, tournament, bounty, closeTournamentResult, filterExpiry, cleanAquarium, feedAquarium,
     marketTrend, marketMultipliers, rodMastery, activeDiscount,
     ecologyScore, buffs, visitorTip, collectVisitorTip, rerollFortune, cookFish,
     autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, newsTicker, bankDeposit, bankWithdraw, upgradeAutoNet, spinWheel, toggleSetting, collectOfflineEarnings, offlineEarningsModal,
@@ -80,6 +89,7 @@ export const UIOverlay: React.FC = () => {
   const [bankAmount, setBankAmount] = useState('');
   
   const [museumLoc, setMuseumLoc] = useState<number>(stats.locId);
+  const [selectedFish, setSelectedFish] = useState<string | null>(null); // For Pedia details
 
   // Slot Machine States
   const [slotBet, setSlotBet] = useState(100);
@@ -104,6 +114,7 @@ export const UIOverlay: React.FC = () => {
   const canPrestige = stats.level >= 50;
   const showPrestige = stats.level >= 50 || stats.prestigeLevel > 0;
 
+  // ... (handleSlotSpin, renderBagItem) - Keep these as they are or use existing implementation
   const handleSlotSpin = () => {
       if (stats.money < slotBet) return;
       setIsSpinning(true);
@@ -163,13 +174,7 @@ export const UIOverlay: React.FC = () => {
       );
   };
 
-  const SidebarBtn = ({ icon, label, onClick, badge }: any) => (
-      <button onClick={() => { onClick(); setIsSidebarOpen(false); }} className="w-full flex items-center gap-4 p-3 bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700 rounded-xl transition-all group mb-2 active:scale-95">
-          <div className="text-slate-400 group-hover:text-cyan-400 transition-colors">{icon}</div>
-          <div className="font-bold text-slate-200 text-sm flex-1 text-left">{label}</div>
-          {badge && <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">{badge}</div>}
-      </button>
-  );
+  // ... (Common Modals like DailyReward, Sidebar)
 
   return (
     <>
@@ -206,12 +211,10 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm animate-fade-in pointer-events-auto" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* Sidebar Menu */}
       <div className={`fixed inset-y-0 right-0 z-[70] w-72 bg-slate-900 border-l border-slate-700 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col pointer-events-auto ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-950/50">
               <span className="font-black text-xl text-white tracking-wider flex items-center gap-2"><Anchor size={20} className="text-cyan-400"/> MENÜ</span>
@@ -219,26 +222,26 @@ export const UIOverlay: React.FC = () => {
           </div>
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
               <Section title="Temel">
-                  <SidebarBtn icon={<Briefcase size={20} />} label="Çanta" onClick={() => setActiveModal('bag')} badge={getBagPercent() >= 100 ? 'DOLU' : bag.length > 0 ? bag.length.toString() : undefined} />
-                  <SidebarBtn icon={<ChefHat size={20} />} label="Restoran" onClick={() => setActiveModal('restaurant')} badge={!restaurant?.isUnlocked && stats.level >= 5 ? 'YENİ' : activeCustomers.length > 0 ? activeCustomers.length : undefined} />
-                  <SidebarBtn icon={<Fish size={20} />} label="Akvaryum" onClick={() => setActiveModal('aqua')} badge={aquarium.length >= stats.aquaLimit ? 'DOLU' : undefined} />
-                  <SidebarBtn icon={<ShoppingCart size={20} />} label="Market" onClick={() => setActiveModal('shop')} badge={activeDiscount ? '%' : undefined} />
-                  <SidebarBtn icon={<ScrollText size={20} />} label="Görevler" onClick={() => setActiveModal('quests')} badge={quests.some(q => !q.claimed && q.current >= q.target) ? '!' : undefined} />
-                  <SidebarBtn icon={<PawPrint size={20} />} label="Yoldaşlar" onClick={() => setActiveModal('pets')} />
+                  <SidebarBtn icon={<Briefcase size={20} />} label="Çanta" onClick={() => { setActiveModal('bag'); setIsSidebarOpen(false); }} badge={getBagPercent() >= 100 ? 'DOLU' : bag.length > 0 ? bag.length.toString() : undefined} />
+                  <SidebarBtn icon={<ChefHat size={20} />} label="Restoran" onClick={() => { setActiveModal('restaurant'); setIsSidebarOpen(false); }} badge={!restaurant?.isUnlocked && stats.level >= 5 ? 'YENİ' : activeCustomers.length > 0 ? activeCustomers.length : undefined} />
+                  <SidebarBtn icon={<Fish size={20} />} label="Akvaryum" onClick={() => { setActiveModal('aqua'); setIsSidebarOpen(false); }} badge={aquarium.length >= stats.aquaLimit ? 'DOLU' : undefined} />
+                  <SidebarBtn icon={<ShoppingCart size={20} />} label="Market" onClick={() => { setActiveModal('shop'); setIsSidebarOpen(false); }} badge={activeDiscount ? '%' : undefined} />
+                  <SidebarBtn icon={<ScrollText size={20} />} label="Görevler" onClick={() => { setActiveModal('quests'); setIsSidebarOpen(false); }} badge={quests.some(q => !q.claimed && q.current >= q.target) ? '!' : undefined} />
+                  <SidebarBtn icon={<PawPrint size={20} />} label="Yoldaşlar" onClick={() => { setActiveModal('pets'); setIsSidebarOpen(false); }} />
               </Section>
               
               <Section title="Gelişim & Eğlence">
-                  <SidebarBtn icon={<Settings size={20} />} label="Yetenekler" onClick={() => setActiveModal('skills')} />
-                  <SidebarBtn icon={<Hammer size={20} />} label="Zanaat" onClick={() => setActiveModal('crafting')} />
-                  <SidebarBtn icon={<Map size={20} />} label="Harita" onClick={() => setActiveModal('map')} />
-                  <SidebarBtn icon={<BookOpen size={20} />} label="Ansiklopedi" onClick={() => setActiveModal('pedia')} />
-                  <SidebarBtn icon={<Dices size={20} />} label="Slot Makinesi" onClick={() => setActiveModal('slots')} />
+                  <SidebarBtn icon={<Settings size={20} />} label="Yetenekler" onClick={() => { setActiveModal('skills'); setIsSidebarOpen(false); }} />
+                  <SidebarBtn icon={<Hammer size={20} />} label="Zanaat" onClick={() => { setActiveModal('crafting'); setIsSidebarOpen(false); }} />
+                  <SidebarBtn icon={<Map size={20} />} label="Harita" onClick={() => { setActiveModal('map'); setIsSidebarOpen(false); }} />
+                  <SidebarBtn icon={<BookOpen size={20} />} label="Ansiklopedi (Müze)" onClick={() => { setActiveModal('pedia'); setIsSidebarOpen(false); }} />
+                  <SidebarBtn icon={<Dices size={20} />} label="Slot Makinesi" onClick={() => { setActiveModal('slots'); setIsSidebarOpen(false); }} />
               </Section>
 
               <Section title="Profil">
-                  <SidebarBtn icon={<Trophy size={20} />} label="Kariyer & İstatistik" onClick={() => setActiveModal('career')} />
-                  <SidebarBtn icon={<Landmark size={20} />} label="Banka" onClick={() => setActiveModal('bank')} />
-                  {showPrestige && <SidebarBtn icon={<Star size={20} />} label="Prestij (Rebirth)" onClick={() => setActiveModal('prestige')} badge={canPrestige ? 'HAZIR' : undefined} />}
+                  <SidebarBtn icon={<Trophy size={20} />} label="Kariyer & İstatistik" onClick={() => { setActiveModal('career'); setIsSidebarOpen(false); }} />
+                  <SidebarBtn icon={<Landmark size={20} />} label="Banka" onClick={() => { setActiveModal('bank'); setIsSidebarOpen(false); }} />
+                  {showPrestige && <SidebarBtn icon={<Star size={20} />} label="Prestij (Rebirth)" onClick={() => { setActiveModal('prestige'); setIsSidebarOpen(false); }} badge={canPrestige ? 'HAZIR' : undefined} />}
               </Section>
           </div>
       </div>
@@ -259,8 +262,191 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* MARKET MODAL */}
+      {/* AQUARIUM MODAL (VISUAL UPDATE) */}
+      <Modal isOpen={activeModal === 'aqua'} onClose={() => setActiveModal(null)} title={`Akvaryum (${aquarium.length}/${stats.aquaLimit})`}>
+          <div className="flex justify-between mb-4">
+              <div className="text-xs text-slate-400">Temizlik: {filterExpiry > Date.now() ? <span className="text-green-400">İyi</span> : <span className="text-red-400">Kötü (Gelir Azalır)</span>}</div>
+              <div className="flex gap-2">
+                  <button onClick={feedAquarium} className="px-3 py-1 bg-orange-600 rounded text-white text-xs font-bold hover:bg-orange-500">Yemle</button>
+                  <button onClick={cleanAquarium} className="px-3 py-1 bg-cyan-700 rounded text-white text-xs font-bold hover:bg-cyan-600">Temizle (250 TL)</button>
+              </div>
+          </div>
+          
+          <div className="relative w-full h-64 bg-gradient-to-b from-blue-800 to-slate-900 rounded-xl overflow-hidden border border-blue-600 shadow-inner">
+              {/* Water Surface */}
+              <div className="absolute top-0 w-full h-4 bg-blue-400/30 animate-pulse z-10" />
+              
+              {/* Dirty Water Overlay */}
+              <div 
+                  className="absolute inset-0 z-20 pointer-events-none transition-opacity duration-1000 bg-gradient-to-b from-green-900/40 to-brown-900/60 mix-blend-multiply"
+                  style={{ opacity: filterExpiry > Date.now() ? 0 : 0.7 }}
+              />
+
+              {/* Decor */}
+              <div className="absolute bottom-0 w-full h-8 bg-[#3d342b] z-0 opacity-80" />
+              <div className="absolute bottom-2 left-4 text-2xl z-0">🌿</div>
+              <div className="absolute bottom-2 right-10 text-2xl z-0">🪨</div>
+
+              {aquarium.length === 0 ? (
+                  <div className="absolute inset-0 flex items-center justify-center text-slate-400/50">Balık Yok</div>
+              ) : (
+                  aquarium.map((item, idx) => {
+                      const top = 10 + (idx * 17) % 70;
+                      const left = 10 + (idx * 23) % 80;
+                      const delay = idx * 0.5;
+                      const duration = 5 + (idx % 3) * 2;
+                      
+                      return (
+                          <div 
+                              key={item.id} 
+                              className="absolute z-10 flex flex-col items-center"
+                              style={{ 
+                                  top: `${top}%`, 
+                                  left: `${left}%`,
+                                  animation: `swim ${duration}s ease-in-out infinite alternate`,
+                                  animationDelay: `${delay}s`
+                              }}
+                          >
+                              <div className="w-12 h-12 transition-transform hover:scale-125 cursor-pointer" onClick={() => sellItem(item.id, true)}>
+                                  <FishRenderer visual={item.visual} />
+                              </div>
+                              <div className="text-[9px] text-white/70 bg-black/30 px-1 rounded backdrop-blur-sm mt-1">{item.name}</div>
+                          </div>
+                      );
+                  })
+              )}
+              <style>{`
+                  @keyframes swim {
+                      0% { transform: translateX(0) scaleX(1); }
+                      50% { transform: translateX(20px) translateY(-5px) scaleX(1); }
+                      100% { transform: translateX(-20px) translateY(5px) scaleX(1); }
+                  }
+              `}</style>
+          </div>
+          <div className="text-center text-[10px] text-slate-500 mt-2">Balıklara tıklayarak satabilirsin.</div>
+      </Modal>
+
+      {/* PEDIA MODAL (MUSEUM RESTORED & ENHANCED) */}
+      <Modal isOpen={activeModal === 'pedia'} onClose={() => { setActiveModal(null); setSelectedFish(null); }} title="Ansiklopedi & Müze">
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+              {LOCATIONS.filter(l => unlockedLocs.includes(l.id)).map(l => (
+                  <button key={l.id} onClick={() => { setMuseumLoc(l.id); setSelectedFish(null); }} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${museumLoc === l.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                      {l.name}
+                  </button>
+              ))}
+          </div>
+
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+              {Object.values(FISH_DB[museumLoc] || []).filter(f => f.type !== ItemType.JUNK).map((f, i) => {
+                  const entry = pedia[f.name];
+                  const caught = !!entry;
+                  return (
+                      <div 
+                          key={i} 
+                          onClick={() => caught && setSelectedFish(f.name)}
+                          className={`aspect-square rounded-xl flex flex-col items-center justify-center border relative cursor-pointer hover:border-cyan-400 transition-colors ${entry ? 'bg-slate-800 border-slate-600' : 'bg-slate-900 border-slate-800 opacity-50'}`}
+                      >
+                          {entry ? (
+                              <div className="w-10 h-10"><FishRenderer visual={f.visual} /></div>
+                          ) : (
+                              <div className="text-2xl grayscale brightness-0 opacity-30">?</div>
+                          )}
+                          
+                          {entry && entry.donated && (
+                              <div className="absolute bottom-0 right-0 bg-purple-600 text-white text-[8px] px-1 rounded-tl shadow">MÜZE</div>
+                          )}
+                          {entry && !entry.donated && bag.some(b => b.name === f.name) && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                          )}
+                      </div>
+                  );
+              })}
+          </div>
+
+          {/* Detailed View Panel */}
+          {selectedFish && (
+              <div className="mt-4 p-4 bg-slate-800 rounded-2xl border border-slate-700 animate-slide-up">
+                  {(() => {
+                      const fishDef = Object.values(FISH_DB[museumLoc]).find(f => f.name === selectedFish);
+                      const entry = pedia[selectedFish];
+                      const inBagItem = bag.find(b => b.name === selectedFish);
+
+                      if (!fishDef || !entry) return null;
+
+                      return (
+                          <div className="flex gap-4">
+                              <div className="w-20 h-20 bg-slate-900 rounded-xl flex items-center justify-center border border-slate-600">
+                                  <div className="w-16 h-16"><FishRenderer visual={fishDef.visual} /></div>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex justify-between items-start">
+                                      <h3 className="font-bold text-white text-lg">{fishDef.name}</h3>
+                                      {entry.donated ? (
+                                          <span className="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-1 rounded border border-purple-500/30 flex items-center gap-1"><Landmark size={10}/> Müzede</span>
+                                      ) : (
+                                          inBagItem && (
+                                              <button onClick={() => donateFish(inBagItem.id)} className="text-[10px] bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded font-bold flex items-center gap-1 animate-pulse">
+                                                  <HandHeart size={10} /> BAĞIŞLA
+                                              </button>
+                                          )
+                                      )}
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-2 mt-2">
+                                      <div className="text-xs text-slate-400 bg-slate-900/50 p-1.5 rounded">En Ağır: <span className="text-white">{entry.maxWeight}kg</span></div>
+                                      <div className="text-xs text-slate-400 bg-slate-900/50 p-1.5 rounded">Yakalama: <span className="text-white">{entry.count}</span></div>
+                                  </div>
+                                  
+                                  <div className="flex gap-2 mt-2">
+                                      {entry.shinyCaught && <span className="text-[10px] text-cyan-400 bg-cyan-900/20 px-2 rounded border border-cyan-500/30">✨ Parlak</span>}
+                                      {entry.goldenCaught && <span className="text-[10px] text-yellow-400 bg-yellow-900/20 px-2 rounded border border-yellow-500/30">🏆 Altın</span>}
+                                  </div>
+                              </div>
+                          </div>
+                      );
+                  })()}
+              </div>
+          )}
+      </Modal>
+
+      {/* QUESTS MODAL (VISUAL FIX) */}
+      <Modal isOpen={activeModal === 'quests'} onClose={() => setActiveModal(null)} title="Görevler">
+          <div className="space-y-3">
+              {quests.map((q, i) => (
+                  <div key={q.id} className={`p-3 rounded-xl border flex justify-between items-center ${q.claimed ? 'bg-slate-800/50 border-slate-800 opacity-50' : 'bg-slate-800 border-slate-700'}`}>
+                      <div className="flex-1 mr-4">
+                          <div className="font-bold text-slate-200 text-sm mb-1">{q.desc}</div>
+                          <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                              <span>İlerleme</span>
+                              <span>{q.current} / {q.target}</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${Math.min(100, (q.current/q.target)*100)}%` }} />
+                          </div>
+                          <div className="text-xs text-yellow-400 mt-1 font-mono">Ödül: {q.reward} TL</div>
+                      </div>
+                      <button 
+                        onClick={() => claimQuest(i)} 
+                        disabled={q.claimed || q.current < q.target}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap ${q.claimed ? 'text-green-500 border border-green-900/30' : q.current >= q.target ? 'bg-green-600 text-white animate-pulse shadow-lg shadow-green-900/50' : 'bg-slate-700 text-slate-500'}`}
+                      >
+                          {q.claimed ? 'ALINDI' : 'AL'}
+                      </button>
+                  </div>
+              ))}
+              <div className="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center mt-4">
+                  <div className="text-slate-400 text-xs mb-2">Günlük Şans Çarkı</div>
+                  <button onClick={spinWheel} className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-bold text-sm shadow-lg hover:scale-105 transition-transform">
+                      ÇARK ÇEVİR
+                  </button>
+              </div>
+          </div>
+      </Modal>
+
+      {/* MARKET, RESTAURANT, ETC - Keep Existing Implementations */}
+      {/* ... (Previous Market, Restaurant, Slots, Mystery Merchant, Bank, Career, Map, Skills, Decor Modals logic remains the same, just ensuring they are rendered) */}
       <Modal isOpen={activeModal === 'shop'} onClose={() => setActiveModal(null)} title="Market">
+          {/* ... (Reuse previous Market logic) */}
           <div className="space-y-6">
               <div className="bg-slate-800 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-slate-750" onClick={() => setShowMarketList(!showMarketList)}>
                  <div className="flex items-center gap-2 text-blue-300 font-bold"><TrendingUp size={16}/> Borsa Durumu</div>
@@ -315,8 +501,8 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* RESTAURANT MODAL */}
       <Modal isOpen={activeModal === 'restaurant'} onClose={() => setActiveModal(null)} title="Balık Restoranı">
+          {/* ... (Reuse previous Restaurant logic) */}
           {restaurant && !restaurant.isUnlocked ? (
               <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-6">
                   <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-xl w-full">
@@ -460,37 +646,6 @@ export const UIOverlay: React.FC = () => {
           )}
       </Modal>
 
-      {/* QUESTS MODAL */}
-      <Modal isOpen={activeModal === 'quests'} onClose={() => setActiveModal(null)} title="Görevler">
-          <div className="space-y-3">
-              {quests.map((q, i) => (
-                  <div key={q.id} className={`p-3 rounded-xl border flex justify-between items-center ${q.claimed ? 'bg-slate-800/50 border-slate-800 opacity-50' : 'bg-slate-800 border-slate-700'}`}>
-                      <div>
-                          <div className="font-bold text-slate-200">{q.desc}</div>
-                          <div className="text-xs text-yellow-400">Ödül: {q.reward} TL</div>
-                          <div className="w-32 h-1.5 bg-slate-700 rounded-full mt-2 overflow-hidden">
-                              <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, (q.current/q.target)*100)}%` }} />
-                          </div>
-                      </div>
-                      <button 
-                        onClick={() => claimQuest(i)} 
-                        disabled={q.claimed || q.current < q.target}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold ${q.claimed ? 'text-green-500' : q.current >= q.target ? 'bg-green-600 text-white animate-pulse' : 'bg-slate-700 text-slate-500'}`}
-                      >
-                          {q.claimed ? 'ALINDI' : 'AL'}
-                      </button>
-                  </div>
-              ))}
-              <div className="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center">
-                  <div className="text-slate-400 text-xs mb-2">Günlük Şans Çarkı</div>
-                  <button onClick={spinWheel} className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-bold text-sm shadow-lg hover:scale-105 transition-transform">
-                      ÇARK ÇEVİR
-                  </button>
-              </div>
-          </div>
-      </Modal>
-
-      {/* PETS MODAL */}
       <Modal isOpen={activeModal === 'pets'} onClose={() => setActiveModal(null)} title="Yoldaşlar">
           <div className="grid grid-cols-2 gap-2">
               {PETS.map(pet => {
@@ -518,7 +673,6 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* CRAFTING MODAL */}
       <Modal isOpen={activeModal === 'crafting'} onClose={() => setActiveModal(null)} title="Zanaat Masası">
           <div className="space-y-2">
               {CRAFTING_RECIPES.map(recipe => {
@@ -539,10 +693,8 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* SKILLS MODAL */}
       <Modal isOpen={activeModal === 'skills'} onClose={() => setActiveModal(null)} title="Yetenekler"><div className="space-y-2">{SKILLS.map(s => { const lvl = skills[s.id] || 0; const cost = (lvl + 1) * 500; const locked = stats.level < s.reqLvl; const maxed = lvl >= s.max; return (<div key={s.id} className="p-3 bg-slate-800 rounded-xl border border-slate-700 flex justify-between items-center"><div><div className="font-bold text-sm text-slate-200 flex items-center gap-2">{s.name} <span className="text-xs text-blue-400 bg-blue-900/30 px-1.5 rounded">Lvl {lvl}</span></div><div className="text-xs text-slate-400 mt-0.5">{s.desc}</div></div>{maxed ? (<span className="text-xs font-bold text-green-500 px-3">MAX</span>) : locked ? (<span className="text-xs font-bold text-red-500 bg-red-900/10 px-2 py-1 rounded">Lvl {s.reqLvl} Gerekli</span>) : (<button onClick={() => upgradeSkill(s.id)} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold">{cost} TL</button>)}</div>)})}</div></Modal>
 
-      {/* DECOR MODAL */}
       <Modal isOpen={activeModal === 'decor'} onClose={() => setActiveModal(null)} title="Dekorasyon">
           <div className="grid grid-cols-3 gap-2">
               {DECORATIONS.map(decor => (
@@ -555,25 +707,20 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* PRESTIGE MODAL */}
       <Modal isOpen={activeModal === 'prestige'} onClose={() => setActiveModal(null)} title="Prestij (Rebirth)">
           <div className="text-center space-y-4">
               <div className="bg-gradient-to-br from-fuchsia-900 to-slate-900 p-6 rounded-2xl border border-fuchsia-500/30">
                   <h3 className="text-2xl font-black text-white mb-2">Seviye 50+</h3>
                   <p className="text-sm text-slate-300 mb-4">Her şeyi sıfırla, kalıcı İnci kazan!</p>
-                  
                   <div className="text-4xl mb-4 animate-bounce">🌀</div>
-                  
                   <div className="bg-slate-900/50 p-3 rounded-xl mb-4">
                       <div className="text-xs text-slate-400">Tahmini Kazanç</div>
                       <div className="text-xl font-bold text-fuchsia-400">+{calculatePrestigePearls()} İnci</div>
                   </div>
-
                   <button onClick={() => { if(window.confirm("Emin misin? Her şey sıfırlanacak!")) doPrestige(); }} disabled={stats.level < 50} className="w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-xl font-bold text-white shadow-lg transition-all">
                       PRESTİJ YAP
                   </button>
               </div>
-
               <Section title="İnci Marketi">
                   <div className="grid grid-cols-2 gap-2">
                       {PRESTIGE_UPGRADES.map(upg => (
@@ -592,7 +739,6 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* MYSTERY MERCHANT MODAL */}
       <Modal isOpen={activeModal === 'merchant'} onClose={() => setActiveModal(null)} title="Gizemli Tüccar">
           {mysteryMerchant && mysteryMerchant.active ? (
               <div className="space-y-4 text-center">
@@ -616,7 +762,6 @@ export const UIOverlay: React.FC = () => {
           )}
       </Modal>
 
-      {/* BANK MODAL */}
       <Modal isOpen={activeModal === 'bank'} onClose={() => setActiveModal(null)} title="Banka">
           <div className="space-y-4">
               <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center">
@@ -634,7 +779,6 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* CAREER MODAL */}
       <Modal isOpen={activeModal === 'career'} onClose={() => setActiveModal(null)} title="Kariyer">
          <div className="flex flex-col items-center py-4 bg-slate-800/50 rounded-xl border border-slate-700 mb-4"><div className="text-5xl mb-2">🏆</div><div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Mevcut Rütbe</div><div className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-400">{getRank()}</div></div>
          <Section title="İstatistikler"><div className="space-y-2 mb-4">
@@ -649,7 +793,6 @@ export const UIOverlay: React.FC = () => {
          <Section title="Başarımlar"><div className="grid grid-cols-3 gap-2">{ACHIEVEMENTS.map(ach => { const unlocked = achievements.includes(ach.id); return (<div key={ach.id} className={`p-2 rounded-lg border flex flex-col items-center text-center ${unlocked ? 'bg-yellow-900/20 border-yellow-500/50' : 'bg-slate-800 border-slate-700 opacity-50'}`}><div className="text-2xl mb-1">{ach.icon}</div><div className={`text-[10px] font-bold ${unlocked ? 'text-yellow-200' : 'text-slate-500'}`}>{ach.title}</div></div>) })}</div></Section>
       </Modal>
 
-      {/* MAP MODAL */}
       <Modal isOpen={activeModal === 'map'} onClose={() => setActiveModal(null)} title="Harita">
           {mapParts < 4 && (
               <div className="mb-4 p-3 bg-amber-900/20 border border-amber-500/30 rounded-xl flex items-center gap-4">
@@ -662,30 +805,8 @@ export const UIOverlay: React.FC = () => {
           )}
           <div className="space-y-2">{LOCATIONS.map(l => { const unlocked = unlockedLocs.includes(l.id); const current = stats.locId === l.id; return (<div key={l.id} className={`flex items-center justify-between p-3 rounded-xl border ${current ? 'bg-blue-900/20 border-blue-500' : 'bg-slate-800 border-slate-700 opacity-90'}`}><div className="flex items-center gap-3"><span className="text-2xl grayscale-[50%]">{l.icon}</span><span className={`font-bold text-sm ${current ? 'text-blue-300' : 'text-slate-300'}`}>{l.name}</span></div>{unlocked ? (current ? <span className="text-xs font-bold text-blue-400 px-3">BURADASIN</span> : <button onClick={() => {travel(l.id); setActiveModal(null)}} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-white">GİT</button>) : (<button onClick={() => buyItem('location', l.id)} className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-xs font-bold text-white flex gap-1 items-center">{l.price} TL</button>)}</div>)})}</div></Modal>
       
-      {/* PEDIA MODAL */}
-      <Modal isOpen={activeModal === 'pedia'} onClose={() => setActiveModal(null)} title="Balık Rehberi"><div className="flex gap-2 overflow-x-auto pb-2 mb-2">{LOCATIONS.filter(l => unlockedLocs.includes(l.id)).map(l => (<button key={l.id} onClick={() => setMuseumLoc(l.id)} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${museumLoc === l.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>{l.name}</button>))}</div><div className="grid grid-cols-4 sm:grid-cols-5 gap-2">{Object.values(FISH_DB[museumLoc] || []).filter(f => f.type !== ItemType.JUNK).map((f, i) => { const entry = pedia[f.name]; return (<div key={i} className={`aspect-square rounded-xl flex flex-col items-center justify-center border relative ${entry ? 'bg-slate-800 border-slate-600' : 'bg-slate-900 border-slate-800 opacity-50'}`}>{entry ? (<div className="w-8 h-8"><FishRenderer visual={f.visual} /></div>) : (<div className="text-2xl grayscale brightness-0">?</div>)}{entry && <div className="text-[8px] font-bold text-slate-400 bg-slate-900 px-1 rounded mt-1">{entry.maxWeight}kg</div>}{entry?.shinyCaught && <span className="absolute top-1 right-1 text-[8px] text-cyan-400">✨</span>}{entry?.goldenCaught && <span className="absolute top-1 left-1 text-[8px] text-yellow-400">🏆</span>}{entry?.donated ? (<div className="absolute bottom-0 right-0 bg-purple-600 text-white text-[8px] px-1 rounded-tl">MÜZE</div>) : (entry && bag.some(b => b.name === f.name) && <button onClick={() => donateFish(bag.find(b => b.name === f.name)!.id)} className="absolute inset-0 bg-black/60 flex items-center justify-center text-[9px] font-bold text-white hover:bg-purple-600/80">BAĞIŞLA</button>)}</div>)})}</div></Modal>
-      
-      {/* AQUARIUM MODAL */}
-      <Modal isOpen={activeModal === 'aqua'} onClose={() => setActiveModal(null)} title={`Akvaryum (${aquarium.length}/${stats.aquaLimit})`}>
-          <div className="flex justify-between mb-4">
-              <div className="text-xs text-slate-400">Temizlik: {filterExpiry > Date.now() ? 'İyi' : 'Kötü (Gelir Azalır)'}</div>
-              <button onClick={cleanAquarium} className="px-3 py-1 bg-cyan-700 rounded text-white text-xs font-bold hover:bg-cyan-600">Temizle (250 TL)</button>
-          </div>
-          {aquarium.length === 0 ? <div className="text-center text-slate-500 py-8">Akvaryum boş.</div> : (
-              <div className="grid grid-cols-3 gap-2">
-                  {aquarium.map(item => (
-                      <div key={item.id} className="relative p-2 bg-blue-900/30 border border-blue-500/30 rounded-xl flex flex-col items-center">
-                          <div className="text-3xl mb-1 animate-[float_4s_ease-in-out_infinite]"><FishRenderer visual={item.visual} /></div>
-                          <div className="font-bold text-[10px] text-blue-200 text-center truncate w-full">{item.name}</div>
-                          <button onClick={() => sellItem(item.id, true)} className="mt-1 bg-green-600 hover:bg-green-500 px-2 py-0.5 rounded text-[9px] text-white w-full">Sat</button>
-                      </div>
-                  ))}
-              </div>
-          )}
-      </Modal>
-
-      {/* SLOT MACHINE MODAL */}
       <Modal isOpen={activeModal === 'slots'} onClose={() => setActiveModal(null)} title="Slot Makinesi">
+          {/* ... (Reuse slot machine logic) */}
           <div className="flex flex-col items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
               <div className="text-center text-xs text-slate-400 mb-2">Şansını dene, servetini katla!</div>
               <div className="flex gap-2 p-4 bg-black rounded-lg border-4 border-yellow-600 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
