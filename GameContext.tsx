@@ -13,6 +13,7 @@ interface GameContextType {
   aquarium: CatchItem[];
   gameState: GameState;
   activeFish: FishBase | null;
+  feedAquarium: (fish: CatchItem) => void;
   weather: WeatherType;
   quests: Quest[];
   questCooldown: number;
