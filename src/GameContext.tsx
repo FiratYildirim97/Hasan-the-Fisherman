@@ -40,7 +40,6 @@ interface GameContextType {
   
   filterExpiry: number;
   cleanAquarium: () => void;
-  feedAquarium: () => void;
   marketTrend: MarketTrend | null;
   marketMultipliers: Record<string, number>; 
   rodMastery: Record<number, number>;
@@ -182,7 +181,6 @@ const NEWS_HEADLINES = [
 ];
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // State Definitions
   const [stats, setStats] = useState<PlayerStats>(INITIAL_STATS);
   const [lifetimeStats, setLifetimeStats] = useState<LifetimeStats>(INITIAL_LIFETIME);
   const [bag, setBag] = useState<CatchItem[]>([]);
@@ -256,8 +254,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const radioNodesRef = useRef<any[]>([]);
   const biteTimeoutRef = useRef<number | null>(null);
 
-  // --- Helper Functions (Hoisted) ---
-
   const showToast = useCallback((msg: string, color: string, sub?: string) => {
     setToast({ msg, color, sub });
     setTimeout(() => setToast(null), 2500);
@@ -312,69 +308,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) { }
   }, [isMuted, combo]);
 
-  const getPrestigeBonus = useCallback((type: 'money' | 'xp' | 'power' | 'luck' | 'auto' | 'discount') => {
-      let multiplier = 0;
-      PRESTIGE_UPGRADES.filter(u => u.type === type).forEach(u => {
-          const level = prestigeUpgrades[u.id] || 0;
-          multiplier += level * u.effectPerLevel;
-      });
-      return multiplier;
-  }, [prestigeUpgrades]);
-
-  const getPetBonus = (type: 'money' | 'xp' | 'catch_rate' | 'discount'): number => {
-     let bonus = 0;
-     ownedPets.forEach(p => {
-        if (p.hunger > 0) {
-           const def = PETS.find(d => d.id === p.id);
-           if (def && def.bonusType === type) {
-               bonus += def.bonusValue * (1 + (p.level - 1) * 0.1);
-           }
-        }
-     });
-     return bonus;
-  };
-
-  const getRank = useCallback(() => {
-    const total = lifetimeStats.totalCaught;
-    const legend = lifetimeStats.legendariesCaught;
-    if (legend >= 50) return "BALIKÇI KRAL 👑";
-    if (legend >= 10) return "EFSANEVİ USTA";
-    if (total >= 1000) return "Deniz Kurdu";
-    if (total >= 500) return "Usta Balıkçı";
-    if (total >= 100) return "Tecrübeli";
-    if (total >= 50) return "Hevesli";
-    return "Acemi";
-  }, [lifetimeStats]);
-
-  const calculatePrestigePearls = () => {
-      if (stats.level < 50) return 0;
-      const levelBonus = 1 + Math.floor((stats.level - 50) / 10);
-      const moneyBonus = Math.floor(stats.money / 100000);
-      const bankBonus = Math.floor(stats.bankBalance / 100000);
-      return levelBonus + moneyBonus + bankBonus;
-  };
-
-  const generateQuests = useCallback((locId: number) => {
-    const mult = locId + 1;
-    const newQuests: Quest[] = [
-      { id: Date.now(), desc: "3 Balık Tut", target: 3, current: 0, reward: 100 * mult, claimed: false, type: 'count' },
-      { id: Date.now()+1, desc: "Gelir Elde Et", target: 200 * mult, current: 0, reward: 150 * mult, claimed: false, type: 'money' },
-      { id: Date.now()+2, desc: "1 Nadir+ Balık", target: 1, current: 0, reward: 250 * mult, claimed: false, type: 'rare' }
-    ];
-    setQuests(newQuests);
-    setQuestCooldown(0);
-  }, []);
-
-  const closeTournamentResult = useCallback(() => {
-    setTournament((prev: TournamentState) => ({ ...prev, finished: false }));
-  }, []);
-
-  // --- Effects ---
-
+  // EVENT SYSTEM LOGIC
   useEffect(() => {
       // Event Trigger Loop (Check every minute)
       const eventLoop = setInterval(() => {
-          if (!activeEvent && Math.random() < 0.15) { 
+          if (!activeEvent && Math.random() < 0.15) { // 15% chance every minute
               const eventTypes: GameEvent[] = [
                   { id: 'frenzy', name: '🌊 Balık Sürüsü', description: 'Balıklar çok hızlı vuruyor!', duration: 60000, startTime: Date.now(), color: 'text-blue-400' },
                   { id: 'gold_rush', name: '💰 Altın Akını', description: 'Satış fiyatları x2!', duration: 60000, startTime: Date.now(), color: 'text-yellow-400' },
@@ -404,7 +342,44 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
   }, [activeEvent, playSound, showToast]);
 
+  // ... (Rest of existing restaurant logic, unlockRestaurant etc.)
+  const buyIngredient = (type: 'vegetables' | 'meze' | 'raki' | 'oil', amount: number, cost: number) => {
+      if (stats.money >= cost) {
+          setStats((prev: PlayerStats) => ({ ...prev, money: prev.money - cost }));
+          setRestaurant((prev: RestaurantState) => ({
+              ...prev,
+              ingredients: {
+                  ...prev.ingredients,
+                  [type]: prev.ingredients[type] + amount
+              }
+          }));
+          playSound('cash');
+          showToast(`Satın alındı!`, "text-green-400");
+      } else {
+          showToast("Yetersiz Bakiye", "text-red-400");
+          playSound('fail');
+      }
+  };
+
+  const unlockRestaurant = () => {
+      const COST = 30000;
+      if (stats.level < 5) {
+          showToast("Seviye 5 Gerekli!", "text-red-400");
+          return;
+      }
+      if (stats.money >= COST) {
+          setStats((prev: PlayerStats) => ({ ...prev, money: prev.money - COST }));
+          setRestaurant((prev: RestaurantState) => ({ ...prev, isUnlocked: true }));
+          playSound('success');
+          showToast("Restoran Satın Alındı!", "text-cyan-400", "İşletmeye Başla!");
+      } else {
+          showToast(`Yetersiz Bakiye (${COST.toLocaleString()} TL)`, "text-red-400");
+          playSound('fail');
+      }
+  };
+
   useEffect(() => {
+      // Customer Spawner (Only if unlocked)
       if (!isRestaurantOpen || !restaurant.isUnlocked) return;
       
       const spawnCustomer = () => {
@@ -461,6 +436,75 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return () => clearInterval(interval);
   }, [isRestaurantOpen, restaurant.isUnlocked, activeCustomers.length, restaurant.reputation, playSound, showToast]);
 
+  const serveCustomer = (customerId: number, fishId: string) => {
+      const customer = activeCustomers.find(c => c.id === customerId) as (Customer & { isVip?: boolean }) | undefined;
+      const fish = bag.find(f => f.id === fishId);
+      if (!customer || !fish) return;
+
+      const ings = restaurant.ingredients;
+      let costVeg = 0, costOil = 0, costRaki = 0, costMeze = 0;
+      let multiplier = 1;
+
+      if (customer.order === 'sandwich') { costVeg = 1; multiplier = 2.5; }
+      if (customer.order === 'grilled') { costOil = 1; costVeg = 1; multiplier = 3.5; }
+      if (customer.order === 'raki_table') { costRaki = 1; costMeze = 2; costVeg = 2; costOil = 1; multiplier = 8.0; }
+
+      if (ings.vegetables < costVeg || ings.oil < costOil || ings.raki < costRaki || ings.meze < costMeze) {
+          showToast("Malzemeler Eksik!", "text-red-400");
+          return;
+      }
+
+      if (fish.rarity < customer.fishReq.rarity || fish.weight < customer.fishReq.minWeight) {
+          showToast("Müşteri bu balığı beğenmedi!", "text-orange-400");
+          return;
+      }
+
+      setBag((prev: CatchItem[]) => prev.filter(f => f.id !== fishId));
+      
+      let reputationGain = customer.isVip ? 10 : 2;
+      let newReputation = restaurant.reputation + reputationGain;
+      let newLevel = restaurant.level;
+      if (newReputation >= newLevel * 100) {
+          newLevel++;
+          playSound('lvl');
+          showToast("Restoran Seviye Atladı!", "text-yellow-400");
+      }
+      
+      setRestaurant((prev: RestaurantState) => ({
+          ...prev,
+          ingredients: {
+              vegetables: prev.ingredients.vegetables - costVeg,
+              oil: prev.ingredients.oil - costOil,
+              raki: prev.ingredients.raki - costRaki,
+              meze: prev.ingredients.meze - costMeze,
+          },
+          reputation: newReputation,
+          level: 1 + Math.floor(newReputation / 100)
+      }));
+      setActiveCustomers((prev: Customer[]) => prev.filter(c => c.id !== customerId));
+
+      let reward = Math.floor(fish.value * multiplier);
+      if (customer.isVip) reward *= 3; 
+
+      let tip = 0;
+      if (customer.patience > 80) tip += Math.floor(reward * 0.3);
+      else if (customer.patience > 50) tip += Math.floor(reward * 0.15);
+      if (restaurant.reputation > 50) tip += Math.floor(restaurant.reputation * 0.5);
+      
+      const totalReward = reward + tip;
+
+      setStats((prev: PlayerStats) => ({ ...prev, money: prev.money + totalReward, xp: prev.xp + (customer.isVip ? 200 : 50) }));
+      playSound('cash');
+      showToast("Sipariş Tamamlandı!", "text-green-400", `+${reward} TL ${tip > 0 ? `(+${tip} Bahşiş)` : ''}`);
+      spawnText(`+${totalReward} TL`, "text-yellow-400", 50, 50);
+  };
+
+  const rejectCustomer = (customerId: number) => {
+      setActiveCustomers((prev: Customer[]) => prev.filter(c => c.id !== customerId));
+      setRestaurant((prev: RestaurantState) => ({ ...prev, reputation: Math.max(0, prev.reputation - 2) }));
+  };
+
+  // ... (Existing Radio Logic etc)
   useEffect(() => {
     radioNodesRef.current.forEach(node => {
         try { node.stop(); } catch {}
@@ -534,6 +578,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     } catch (e) { console.error("Radio error", e); }
   }, [radioStation, isMuted]);
+
+  const cycleRadio = () => {
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume().catch(() => {});
+      }
+      setRadioStation((prev: RadioStation) => {
+          if (prev === 'off') return 'nature';
+          if (prev === 'nature') return 'lofi';
+          return 'off';
+      });
+      const next = radioStation === 'off' ? 'nature' : radioStation === 'nature' ? 'lofi' : 'off';
+      const msg = next === 'nature' ? "Radyo: Doğa Sesleri" : next === 'lofi' ? "Radyo: Lo-Fi Modu" : "Radyo: Kapalı";
+      showToast(msg, "text-white");
+  };
+
+  const getPrestigeBonus = useCallback((type: 'money' | 'xp' | 'power' | 'luck' | 'auto' | 'discount') => {
+      let multiplier = 0;
+      PRESTIGE_UPGRADES.filter(u => u.type === type).forEach(u => {
+          const level = prestigeUpgrades[u.id] || 0;
+          multiplier += level * u.effectPerLevel;
+      });
+      return multiplier;
+  }, [prestigeUpgrades]);
 
   useEffect(() => {
     const updateMarket = () => {
@@ -669,6 +736,37 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return () => clearInterval(timer);
   }, [visitorTip, aquarium.length]);
 
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev: boolean) => !prev);
+  }, []);
+
+  const getRank = useCallback(() => {
+    const total = lifetimeStats.totalCaught;
+    const legend = lifetimeStats.legendariesCaught;
+    if (legend >= 50) return "BALIKÇI KRAL 👑";
+    if (legend >= 10) return "EFSANEVİ USTA";
+    if (total >= 1000) return "Deniz Kurdu";
+    if (total >= 500) return "Usta Balıkçı";
+    if (total >= 100) return "Tecrübeli";
+    if (total >= 50) return "Hevesli";
+    return "Acemi";
+  }, [lifetimeStats]);
+
+  const generateQuests = useCallback((locId: number) => {
+    const mult = locId + 1;
+    const newQuests: Quest[] = [
+      { id: Date.now(), desc: "3 Balık Tut", target: 3, current: 0, reward: 100 * mult, claimed: false, type: 'count' },
+      { id: Date.now()+1, desc: "Gelir Elde Et", target: 200 * mult, current: 0, reward: 150 * mult, claimed: false, type: 'money' },
+      { id: Date.now()+2, desc: "1 Nadir+ Balık", target: 1, current: 0, reward: 250 * mult, claimed: false, type: 'rare' }
+    ];
+    setQuests(newQuests);
+    setQuestCooldown(0);
+  }, []);
+
+  const closeTournamentResult = useCallback(() => {
+    setTournament((prev: TournamentState) => ({ ...prev, finished: false }));
+  }, []);
+
   useEffect(() => {
      const allFish = (Object.values(FISH_DB) as FishBase[][]).flat().filter(f => f.type === ItemType.FISH);
      if (allFish.length > 0) {
@@ -691,8 +789,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }, 45000);
       return () => clearInterval(interval);
   }, [supplyCrate, gameState]);
-
-  // --- Actions ---
 
   const collectCrate = () => {
       if (!supplyCrate) return;
@@ -826,6 +922,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
   };
 
+  const getPetBonus = (type: 'money' | 'xp' | 'catch_rate' | 'discount'): number => {
+     let bonus = 0;
+     ownedPets.forEach(p => {
+        if (p.hunger > 0) {
+           const def = PETS.find(d => d.id === p.id);
+           if (def && def.bonusType === type) {
+               bonus += def.bonusValue * (1 + (p.level - 1) * 0.1);
+           }
+        }
+     });
+     return bonus;
+  };
+
   const buyPet = (id: string) => {
       playSound('click');
       if (ownedPets.find(p => p.id === id)) {
@@ -875,6 +984,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       showToast(`${food.name} verildi`, "text-green-400");
       playSound('click');
+  };
+
+  const calculatePrestigePearls = () => {
+      if (stats.level < 50) return 0;
+      const levelBonus = 1 + Math.floor((stats.level - 50) / 10);
+      const moneyBonus = Math.floor(stats.money / 100000);
+      const bankBonus = Math.floor(stats.bankBalance / 100000);
+      return levelBonus + moneyBonus + bankBonus;
   };
 
   const doPrestige = () => {
@@ -1139,23 +1256,127 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
   };
 
-  const cycleRadio = () => {
-      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-          audioCtxRef.current.resume().catch(() => {});
-      }
-      setRadioStation((prev: RadioStation) => {
-          if (prev === 'off') return 'nature';
-          if (prev === 'nature') return 'lofi';
-          return 'off';
-      });
-      const next = radioStation === 'off' ? 'nature' : radioStation === 'nature' ? 'lofi' : 'off';
-      const msg = next === 'nature' ? "Radyo: Doğa Sesleri" : next === 'lofi' ? "Radyo: Lo-Fi Modu" : "Radyo: Kapalı";
-      showToast(msg, "text-white");
-  };
+  useEffect(() => {
+    const saved = localStorage.getItem("balikciHasanSave_v6");
+    if (saved) {
+      try {
+        const data: SavedGame = JSON.parse(saved);
+        
+        if (data.autoNetLevel && data.autoNetLevel > 0 && data.lastLogin) {
+            const now = Date.now();
+            const minutesOffline = Math.floor((now - data.lastLogin) / 60000);
+            if (minutesOffline > 10) {
+                const prestigeBoost = 1 + (data.prestigeUpgrades?.['perm_auto'] || 0) * 0.2;
+                const income = Math.floor(minutesOffline * data.autoNetLevel * 10 * prestigeBoost);
+                if (income > 0) setOfflineEarningsModal(income);
+            }
+        }
+        
+        let loadedPets = data.ownedPets || [];
+        if (data.lastLogin && loadedPets.length > 0) {
+             const now = Date.now();
+             const minutesOffline = Math.floor((now - data.lastLogin) / 60000);
+             if (minutesOffline > 0) {
+                 loadedPets = loadedPets.map(p => ({
+                     ...p,
+                     hunger: Math.max(0, p.hunger - (minutesOffline * 5))
+                 }));
+             }
+        }
 
-  const toggleMute = useCallback(() => {
-    setIsMuted((prev: boolean) => !prev);
+        // Daily Reward Logic
+        const now = Date.now();
+        const lastReward = data.stats.lastRewardTime || 0;
+        const lastDate = new Date(lastReward);
+        const currentDate = new Date(now);
+        
+        // Reset time to midnight for comparison
+        lastDate.setHours(0,0,0,0);
+        currentDate.setHours(0,0,0,0);
+        
+        if (currentDate.getTime() > lastDate.getTime()) {
+            // New day
+            const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let newStreak = (data.stats.dailyStreak || 0);
+            if (diffDays === 1) {
+                newStreak += 1;
+            } else {
+                newStreak = 1;
+            }
+            
+            const reward = newStreak * 200 + 100;
+            setDailyRewardPopup({ active: true, streak: newStreak, reward });
+        }
+
+        setStats({ ...INITIAL_STATS, ...data.stats });
+        
+        const hydrateItems = (items: CatchItem[]) => items.map(i => {
+             if (!i.visual) {
+                const dbItem = (Object.values(FISH_DB) as FishBase[][]).flat().find(f => f.name === i.name);
+                return { ...i, visual: dbItem?.visual || { shape: 'round', bodyColor: '#888', finColor: '#666', pattern: 'none' } };
+             }
+             return i;
+        });
+
+        setBag(hydrateItems(data.bag));
+        setAquarium(hydrateItems(data.aquarium));
+        
+        setUnlockedLocs(data.unlockedLocs);
+        setOwnedRods(data.ownedRods);
+        setOwnedBobbers(data.ownedBobbers || ['basic']);
+        setOwnedDecor(data.ownedDecor || []);
+        setActiveDecor(data.activeDecor || []);
+        setAchievements(data.achievements || []);
+        setSkills(data.skills);
+        setPedia(data.pedia);
+        setQuests(data.quests);
+        setQuestCooldown(data.questCooldown);
+        setFilterExpiry(data.filterExpiry || 0);
+        setRodMastery(data.rodMastery || {}); 
+        if (data.lifetimeStats) setLifetimeStats(data.lifetimeStats);
+        
+        setEcologyScore(data.ecologyScore || 0);
+        setBuffs(data.buffs || { xpBoostExpiry: 0, goldenHook: false });
+        
+        if (data.autoNetLevel) setAutoNetLevel(data.autoNetLevel);
+        if (data.ownedCharms) setOwnedCharms(data.ownedCharms);
+        if (data.mapParts) setMapParts(data.mapParts);
+        if (data.spinAvailable) setSpinAvailable(data.spinAvailable);
+        if (data.settings) setSettings(data.settings);
+        if (data.prestigeUpgrades) setPrestigeUpgrades(data.prestigeUpgrades);
+        
+        if (data.radioStation) setRadioStation(data.radioStation); 
+        
+        // Load Restaurant state if exists, else merge with default (locked)
+        if (data.restaurant) {
+            setRestaurant({
+                ...INITIAL_RESTAURANT,
+                ...data.restaurant,
+                // Ensure legacy saves get locked status if undefined
+                isUnlocked: data.restaurant.isUnlocked ?? false,
+                level: data.restaurant.level ?? 1
+            });
+        }
+
+        setOwnedPets(loadedPets);
+
+      } catch (e) { console.error("Save file corrupted", e); }
+    } else {
+      generateQuests(INITIAL_STATS.locId);
+    }
   }, []);
+
+  useEffect(() => {
+    const data: SavedGame = {
+      stats, bag, aquarium, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, skills, pedia, quests, questCooldown,
+      lastLogin: Date.now(), lifetimeStats, filterExpiry, rodMastery, ecologyScore, buffs,
+      autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, ownedPets, prestigeUpgrades,
+      radioStation, restaurant
+    };
+    localStorage.setItem("balikciHasanSave_v6", JSON.stringify(data));
+  }, [stats, bag, aquarium, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, skills, pedia, quests, questCooldown, lifetimeStats, filterExpiry, rodMastery, ecologyScore, buffs, autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, ownedPets, prestigeUpgrades, radioStation, restaurant]);
 
   const cleanAquarium = () => {
     playSound('click');
@@ -1170,20 +1391,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
        showToast("Yetersiz Bakiye", "text-red-500");
        playSound('fail');
     }
-  };
-
-  const feedAquarium = () => {
-      playSound('click');
-      if (aquarium.length === 0) {
-          showToast("Akvaryum Boş!", "text-slate-400");
-          return;
-      }
-      
-      const xpGain = aquarium.length * 10;
-      setStats((prev: PlayerStats) => ({ ...prev, xp: prev.xp + xpGain }));
-      spawnText(`+${xpGain} XP`, "text-green-400", 50, 50);
-      showToast("Balıklar Beslendi!", "text-green-300");
-      playSound('splash');
   };
 
   const hookFish = useCallback(() => {
@@ -1287,20 +1494,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateQuestProgress = (type: 'count' | 'money' | 'rare', amount: number) => {
-      setQuests((prev: Quest[]) => prev.map(q => {
-          if (!q.claimed && q.type === type && q.current < q.target) {
-              const newVal = Math.min(q.target, q.current + amount);
-              if (newVal >= q.target && q.current < q.target) {
-                  showToast("Görev Tamamlandı!", "text-yellow-400");
-                  playSound('success');
-              }
-              return { ...q, current: newVal };
-          }
-          return q;
-      }));
-  };
-
   const reelIn = (success: boolean, snapped: boolean, perfect: boolean, fishOverride?: FishBase) => {
     const currentFish = fishOverride || activeFish;
     
@@ -1313,9 +1506,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else if (success && currentFish) {
       setGameState(GameState.CAUGHT);
       playSound('success');
-
-      if (currentFish.type !== ItemType.JUNK) updateQuestProgress('count', 1);
-      if (currentFish.rarity >= 3) updateQuestProgress('rare', 1);
 
       // Double Hook Logic
       const doubleHookLevel = skills['double_hook'] || 0;
@@ -1479,9 +1669,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStats((prev: PlayerStats) => ({ ...prev, money: prev.money + finalPrice }));
     setLifetimeStats((prev: LifetimeStats) => ({ ...prev, totalMoneyEarned: prev.totalMoneyEarned + finalPrice }));
     
-    // Update Quests (Money)
-    updateQuestProgress('money', finalPrice);
-
     if (fromAqua) setAquarium((prev: CatchItem[]) => prev.filter(i => i.id !== id));
     else setBag((prev: CatchItem[]) => prev.filter(i => i.id !== id));
 
@@ -1526,9 +1713,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStats((prev: PlayerStats) => ({ ...prev, money: prev.money + total }));
     setLifetimeStats((prev: LifetimeStats) => ({ ...prev, totalMoneyEarned: prev.totalMoneyEarned + total }));
     
-    // Update Quests (Money)
-    updateQuestProgress('money', total);
-
     const soldIds = itemsToSell.map(i => i.id);
     setBag((prev: CatchItem[]) => prev.filter(i => !soldIds.includes(i.id)));
     
@@ -1611,131 +1795,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resetGame = () => { localStorage.removeItem("balikciHasanSave_v6"); window.location.reload(); };
   const startNewGame = () => { playSound('click'); setStats(INITIAL_STATS); setLifetimeStats(INITIAL_LIFETIME); setBag([]); setAquarium([]); setGameState(GameState.IDLE); setActiveFish(null); setWeather(WeatherType.SUNNY); setSkills({ luck: 0, haggle: 0, repair: 0, biology: 0 }); setUnlockedLocs([0]); setOwnedRods([0]); setOwnedBobbers(['basic']); setOwnedDecor([]); setActiveDecor([]); setAchievements([]); setPedia({}); setTournament({ active: false, timeLeft: 0, playerScore: 0, aiScores: [], finished: false, rank: null }); setBounty({ active: false, fishName: '', minWeight: 0, locId: 0, reward: 0, timeLeft: 0 }); setCombo(0); setFilterExpiry(0); setRodMastery({}); setEcologyScore(0); setBuffs({ xpBoostExpiry: 0, goldenHook: false }); setOwnedCharms([]); setAutoNetLevel(0); setMapParts(0); setOwnedPets([]); generateQuests(0); setPrestigeUpgrades({}); localStorage.removeItem("balikciHasanSave_v6"); showToast("Yeni Oyun Başlatıldı", "text-white"); };
   
-  // --- Save/Load Effects ---
-
-  useEffect(() => {
-    const saved = localStorage.getItem("balikciHasanSave_v6");
-    if (saved) {
-      try {
-        const data: SavedGame = JSON.parse(saved);
-        
-        if (data.autoNetLevel && data.autoNetLevel > 0 && data.lastLogin) {
-            const now = Date.now();
-            const minutesOffline = Math.floor((now - data.lastLogin) / 60000);
-            if (minutesOffline > 10) {
-                const prestigeBoost = 1 + (data.prestigeUpgrades?.['perm_auto'] || 0) * 0.2;
-                const income = Math.floor(minutesOffline * data.autoNetLevel * 10 * prestigeBoost);
-                if (income > 0) setOfflineEarningsModal(income);
-            }
-        }
-        
-        let loadedPets = data.ownedPets || [];
-        if (data.lastLogin && loadedPets.length > 0) {
-             const now = Date.now();
-             const minutesOffline = Math.floor((now - data.lastLogin) / 60000);
-             if (minutesOffline > 0) {
-                 loadedPets = loadedPets.map(p => ({
-                     ...p,
-                     hunger: Math.max(0, p.hunger - (minutesOffline * 5))
-                 }));
-             }
-        }
-
-        // Daily Reward Logic
-        const now = Date.now();
-        const lastReward = data.stats.lastRewardTime || 0;
-        const lastDate = new Date(lastReward);
-        const currentDate = new Date(now);
-        
-        lastDate.setHours(0,0,0,0);
-        currentDate.setHours(0,0,0,0);
-        
-        if (currentDate.getTime() > lastDate.getTime()) {
-            const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            let newStreak = (data.stats.dailyStreak || 0);
-            if (diffDays === 1) {
-                newStreak += 1;
-            } else {
-                newStreak = 1;
-            }
-            
-            const reward = newStreak * 200 + 100;
-            setDailyRewardPopup({ active: true, streak: newStreak, reward });
-        }
-
-        setStats({ ...INITIAL_STATS, ...data.stats });
-        
-        const hydrateItems = (items: CatchItem[]) => items.map(i => {
-             if (!i.visual) {
-                const dbItem = (Object.values(FISH_DB) as FishBase[][]).flat().find(f => f.name === i.name);
-                return { ...i, visual: dbItem?.visual || { shape: 'round', bodyColor: '#888', finColor: '#666', pattern: 'none' } };
-             }
-             return i;
-        });
-
-        setBag(hydrateItems(data.bag));
-        setAquarium(hydrateItems(data.aquarium));
-        
-        setUnlockedLocs(data.unlockedLocs);
-        setOwnedRods(data.ownedRods);
-        setOwnedBobbers(data.ownedBobbers || ['basic']);
-        setOwnedDecor(data.ownedDecor || []);
-        setActiveDecor(data.activeDecor || []);
-        setAchievements(data.achievements || []);
-        setSkills(data.skills);
-        setPedia(data.pedia);
-        setQuests(data.quests);
-        setQuestCooldown(data.questCooldown);
-        setFilterExpiry(data.filterExpiry || 0);
-        setRodMastery(data.rodMastery || {}); 
-        if (data.lifetimeStats) setLifetimeStats(data.lifetimeStats);
-        
-        setEcologyScore(data.ecologyScore || 0);
-        setBuffs(data.buffs || { xpBoostExpiry: 0, goldenHook: false });
-        
-        if (data.autoNetLevel) setAutoNetLevel(data.autoNetLevel);
-        if (data.ownedCharms) setOwnedCharms(data.ownedCharms);
-        if (data.mapParts) setMapParts(data.mapParts);
-        if (data.spinAvailable) setSpinAvailable(data.spinAvailable);
-        if (data.settings) setSettings(data.settings);
-        if (data.prestigeUpgrades) setPrestigeUpgrades(data.prestigeUpgrades);
-        
-        if (data.radioStation) setRadioStation(data.radioStation); 
-        
-        if (data.restaurant) {
-            setRestaurant({
-                ...INITIAL_RESTAURANT,
-                ...data.restaurant,
-                isUnlocked: data.restaurant.isUnlocked ?? false,
-                level: data.restaurant.level ?? 1
-            });
-        }
-
-        setOwnedPets(loadedPets);
-
-      } catch (e) { console.error("Save file corrupted", e); }
-    } else {
-      generateQuests(INITIAL_STATS.locId);
-    }
-  }, [generateQuests]);
-
-  useEffect(() => {
-    const data: SavedGame = {
-      stats, bag, aquarium, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, skills, pedia, quests, questCooldown,
-      lastLogin: Date.now(), lifetimeStats, filterExpiry, rodMastery, ecologyScore, buffs,
-      autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, ownedPets, prestigeUpgrades,
-      radioStation, restaurant
-    };
-    localStorage.setItem("balikciHasanSave_v6", JSON.stringify(data));
-  }, [stats, bag, aquarium, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, skills, pedia, quests, questCooldown, lifetimeStats, filterExpiry, rodMastery, ecologyScore, buffs, autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, ownedPets, prestigeUpgrades, radioStation, restaurant]);
-
-
   return (
     <GameContext.Provider value={{
       stats, bag, aquarium, gameState, activeFish, weather, quests, questCooldown, skills, unlockedLocs, ownedRods, ownedBobbers, ownedDecor, activeDecor, achievements, pedia, toast, floatingTexts, celebrationFish, catchVisual, isMuted, lifetimeStats, dailyFortune,
-      combo, tournament, bounty, closeTournamentResult, filterExpiry, cleanAquarium, feedAquarium, marketTrend, marketMultipliers, supplyCrate, collectCrate, rodMastery, activeDiscount, mysteryMerchant,
+      combo, tournament, bounty, closeTournamentResult, filterExpiry, cleanAquarium, marketTrend, marketMultipliers, supplyCrate, collectCrate, rodMastery, activeDiscount, mysteryMerchant,
       timeOfDay, ecologyScore, buffs, visitorTip, collectVisitorTip, rerollFortune, cookFish,
       autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, newsTicker, bankDeposit, bankWithdraw, upgradeAutoNet, upgradeWormFarm, spinWheel, toggleSetting, collectOfflineEarnings, offlineEarningsModal,
       ownedPets, buyPet, feedPet, prestigeUpgrades, doPrestige, buyPrestigeUpgrade, calculatePrestigePearls,

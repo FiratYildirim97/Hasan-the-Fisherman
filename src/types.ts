@@ -215,10 +215,10 @@ export interface RestaurantState {
   isUnlocked: boolean;
   level: number;
   ingredients: {
-    vegetables: number; // Sebze
-    meze: number; // Meze tabağı
-    raki: number; // Rakı
-    oil: number; // Yağ
+    vegetables: number;
+    meze: number;
+    raki: number;
+    oil: number;
   };
   reputation: number;
 }
@@ -226,8 +226,8 @@ export interface RestaurantState {
 export interface Customer {
   id: number;
   name: string;
-  order: 'grilled' | 'sandwich' | 'raki_table'; // Izgara, Ekmek Arası, Rakı Sofrası
-  fishReq: { rarity: number; minWeight: number }; // Minimum requirements for fish
+  order: 'grilled' | 'sandwich' | 'raki_table';
+  fishReq: { rarity: number; minWeight: number };
   patience: number;
   maxPatience: number;
   reward: number;
@@ -238,7 +238,7 @@ export interface GameEvent {
   id: 'frenzy' | 'gold_rush' | 'giant_fish' | 'calm_waters';
   name: string;
   description: string;
-  duration: number; // milliseconds
+  duration: number;
   startTime: number;
   color: string;
 }
