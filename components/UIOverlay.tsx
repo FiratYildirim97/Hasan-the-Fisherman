@@ -7,7 +7,6 @@ import { Modal } from './Modal';
 import { ItemType, CatchItem, FishVisual } from '../types';
 import { FishRenderer } from './Scene';
 
-// ... (Existing Helper Components: Section, ShopItem, StatRow, SidebarBtn)
 const Section: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-2 mb-4">
     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1 border-b border-slate-800 pb-1 mb-2">{title}</h3>
@@ -68,7 +67,7 @@ export const UIOverlay: React.FC = () => {
     stats, bag, castRod, gameState, ownedRods, ownedBobbers, ownedDecor, activeDecor, unlockedLocs, skills, achievements, dailyFortune,
     sellItem, sellAll, recycleJunk, buyItem, equipRod, equipBobber, toggleDecor, repairRod, travel, quests, claimQuest, aquarium, moveToAqua, upgradeSkill, pedia,
     isMuted, toggleMute, lifetimeStats, getRank,
-    combo, tournament, bounty, closeTournamentResult, filterExpiry, cleanAquarium, feedAquarium,
+    combo, tournament, bounty, closeTournamentResult, filterExpiry, cleanAquarium,
     marketTrend, marketMultipliers, rodMastery, activeDiscount,
     ecologyScore, buffs, visitorTip, collectVisitorTip, rerollFortune, cookFish,
     autoNetLevel, ownedCharms, mapParts, spinAvailable, settings, newsTicker, bankDeposit, bankWithdraw, upgradeAutoNet, spinWheel, toggleSetting, collectOfflineEarnings, offlineEarningsModal,
@@ -89,9 +88,8 @@ export const UIOverlay: React.FC = () => {
   const [bankAmount, setBankAmount] = useState('');
   
   const [museumLoc, setMuseumLoc] = useState<number>(stats.locId);
-  const [selectedFish, setSelectedFish] = useState<string | null>(null); // For Pedia details
+  const [selectedFish, setSelectedFish] = useState<string | null>(null);
 
-  // Slot Machine States
   const [slotBet, setSlotBet] = useState(100);
   const [slotReels, setSlotReels] = useState(['🎰', '🎰', '🎰']);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -114,7 +112,6 @@ export const UIOverlay: React.FC = () => {
   const canPrestige = stats.level >= 50;
   const showPrestige = stats.level >= 50 || stats.prestigeLevel > 0;
 
-  // ... (handleSlotSpin, renderBagItem) - Keep these as they are or use existing implementation
   const handleSlotSpin = () => {
       if (stats.money < slotBet) return;
       setIsSpinning(true);
@@ -173,8 +170,6 @@ export const UIOverlay: React.FC = () => {
           </div>
       );
   };
-
-  // ... (Common Modals like DailyReward, Sidebar)
 
   return (
     <>
@@ -246,8 +241,6 @@ export const UIOverlay: React.FC = () => {
           </div>
       </div>
 
-      {/* --- MODALS --- */}
-
       {/* BAG MODAL */}
       <Modal isOpen={activeModal === 'bag'} onClose={() => setActiveModal(null)} title={`Sırt Çantası (${bag.length}/${stats.bagLimit})`}>
           <div className="flex justify-between mb-4">
@@ -262,27 +255,23 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* AQUARIUM MODAL (VISUAL UPDATE) */}
+      {/* AQUARIUM MODAL */}
       <Modal isOpen={activeModal === 'aqua'} onClose={() => setActiveModal(null)} title={`Akvaryum (${aquarium.length}/${stats.aquaLimit})`}>
           <div className="flex justify-between mb-4">
               <div className="text-xs text-slate-400">Temizlik: {filterExpiry > Date.now() ? <span className="text-green-400">İyi</span> : <span className="text-red-400">Kötü (Gelir Azalır)</span>}</div>
               <div className="flex gap-2">
-                  <button onClick={feedAquarium} className="px-3 py-1 bg-orange-600 rounded text-white text-xs font-bold hover:bg-orange-500">Yemle</button>
                   <button onClick={cleanAquarium} className="px-3 py-1 bg-cyan-700 rounded text-white text-xs font-bold hover:bg-cyan-600">Temizle (250 TL)</button>
               </div>
           </div>
           
           <div className="relative w-full h-64 bg-gradient-to-b from-blue-800 to-slate-900 rounded-xl overflow-hidden border border-blue-600 shadow-inner">
-              {/* Water Surface */}
               <div className="absolute top-0 w-full h-4 bg-blue-400/30 animate-pulse z-10" />
               
-              {/* Dirty Water Overlay */}
               <div 
                   className="absolute inset-0 z-20 pointer-events-none transition-opacity duration-1000 bg-gradient-to-b from-green-900/40 to-brown-900/60 mix-blend-multiply"
                   style={{ opacity: filterExpiry > Date.now() ? 0 : 0.7 }}
               />
 
-              {/* Decor */}
               <div className="absolute bottom-0 w-full h-8 bg-[#3d342b] z-0 opacity-80" />
               <div className="absolute bottom-2 left-4 text-2xl z-0">🌿</div>
               <div className="absolute bottom-2 right-10 text-2xl z-0">🪨</div>
@@ -326,7 +315,7 @@ export const UIOverlay: React.FC = () => {
           <div className="text-center text-[10px] text-slate-500 mt-2">Balıklara tıklayarak satabilirsin.</div>
       </Modal>
 
-      {/* PEDIA MODAL (MUSEUM RESTORED & ENHANCED) */}
+      {/* PEDIA MODAL */}
       <Modal isOpen={activeModal === 'pedia'} onClose={() => { setActiveModal(null); setSelectedFish(null); }} title="Ansiklopedi & Müze">
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
               {LOCATIONS.filter(l => unlockedLocs.includes(l.id)).map(l => (
@@ -363,7 +352,6 @@ export const UIOverlay: React.FC = () => {
               })}
           </div>
 
-          {/* Detailed View Panel */}
           {selectedFish && (
               <div className="mt-4 p-4 bg-slate-800 rounded-2xl border border-slate-700 animate-slide-up">
                   {(() => {
@@ -409,7 +397,6 @@ export const UIOverlay: React.FC = () => {
           )}
       </Modal>
 
-      {/* QUESTS MODAL (VISUAL FIX) */}
       <Modal isOpen={activeModal === 'quests'} onClose={() => setActiveModal(null)} title="Görevler">
           <div className="space-y-3">
               {quests.map((q, i) => (
@@ -443,10 +430,7 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* MARKET, RESTAURANT, ETC - Keep Existing Implementations */}
-      {/* ... (Previous Market, Restaurant, Slots, Mystery Merchant, Bank, Career, Map, Skills, Decor Modals logic remains the same, just ensuring they are rendered) */}
       <Modal isOpen={activeModal === 'shop'} onClose={() => setActiveModal(null)} title="Market">
-          {/* ... (Reuse previous Market logic) */}
           <div className="space-y-6">
               <div className="bg-slate-800 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-slate-750" onClick={() => setShowMarketList(!showMarketList)}>
                  <div className="flex items-center gap-2 text-blue-300 font-bold"><TrendingUp size={16}/> Borsa Durumu</div>
@@ -502,7 +486,6 @@ export const UIOverlay: React.FC = () => {
       </Modal>
 
       <Modal isOpen={activeModal === 'restaurant'} onClose={() => setActiveModal(null)} title="Balık Restoranı">
-          {/* ... (Reuse previous Restaurant logic) */}
           {restaurant && !restaurant.isUnlocked ? (
               <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-6">
                   <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-xl w-full">
@@ -806,7 +789,6 @@ export const UIOverlay: React.FC = () => {
           <div className="space-y-2">{LOCATIONS.map(l => { const unlocked = unlockedLocs.includes(l.id); const current = stats.locId === l.id; return (<div key={l.id} className={`flex items-center justify-between p-3 rounded-xl border ${current ? 'bg-blue-900/20 border-blue-500' : 'bg-slate-800 border-slate-700 opacity-90'}`}><div className="flex items-center gap-3"><span className="text-2xl grayscale-[50%]">{l.icon}</span><span className={`font-bold text-sm ${current ? 'text-blue-300' : 'text-slate-300'}`}>{l.name}</span></div>{unlocked ? (current ? <span className="text-xs font-bold text-blue-400 px-3">BURADASIN</span> : <button onClick={() => {travel(l.id); setActiveModal(null)}} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-white">GİT</button>) : (<button onClick={() => buyItem('location', l.id)} className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-xs font-bold text-white flex gap-1 items-center">{l.price} TL</button>)}</div>)})}</div></Modal>
       
       <Modal isOpen={activeModal === 'slots'} onClose={() => setActiveModal(null)} title="Slot Makinesi">
-          {/* ... (Reuse slot machine logic) */}
           <div className="flex flex-col items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
               <div className="text-center text-xs text-slate-400 mb-2">Şansını dene, servetini katla!</div>
               <div className="flex gap-2 p-4 bg-black rounded-lg border-4 border-yellow-600 shadow-[0_0_20px_rgba(234,179,8,0.3)]">
@@ -836,9 +818,6 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* --- HUD ELEMENTS --- */}
-
-      {/* EVENT BANNER */}
       {activeEvent && (
           <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 w-full max-w-sm pointer-events-none animate-slide-up">
               <div className="bg-slate-900/90 backdrop-blur border-y border-white/10 p-2 flex items-center justify-center gap-3 shadow-2xl">
@@ -852,14 +831,12 @@ export const UIOverlay: React.FC = () => {
           </div>
       )}
 
-      {/* News Ticker */}
       <div className="absolute bottom-36 w-full overflow-hidden bg-slate-900/80 border-y border-white/5 backdrop-blur-sm z-20 h-6 flex items-center pointer-events-none">
           <div className="whitespace-nowrap animate-[marquee_15s_linear_infinite] text-[10px] font-mono text-cyan-300 px-4">
               📢 {newsTicker} &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; 🏦 Banka Faizi: %1/dk &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; 🏆 Turnuva Yakında!
           </div>
       </div>
 
-      {/* Top Header */}
       <div className="absolute top-0 w-full p-3 flex justify-between items-start z-30 pt-safe-top bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
         <div className="flex flex-col gap-0.5 pointer-events-auto max-w-[45%]">
           <div className="flex items-center gap-2 bg-slate-900/60 backdrop-blur border border-slate-700 px-2.5 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap">
