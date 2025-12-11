@@ -1,11 +1,41 @@
 
-import { Rod, Location, Bait, Skill, FishBase, ItemType, Bobber, Decoration, Achievement, Charm, PetBase, PrestigeUpgrade, CraftingRecipe } from './types';
+import { Rod, Location, Bait, Skill, FishBase, ItemType, Bobber, Decoration, Achievement, Charm, PetBase, PrestigeUpgrade, CraftingRecipe, Rival, League } from './types';
 
 export const PETS: PetBase[] = [
   { id: 'cat', name: 'Tekir Kedi', price: 5000, icon: '🐱', desc: 'Satışlardan %10 fazla para kazandırır.', bonusType: 'money', bonusValue: 0.10 },
   { id: 'pelican', name: 'Pelikan', price: 12000, icon: '🦢', desc: 'Seyahat masraflarını %20 azaltır.', bonusType: 'discount', bonusValue: 0.20 },
   { id: 'seal', name: 'Fok Balığı', price: 25000, icon: '🦭', desc: 'Balık yakalarken +%20 XP kazandırır.', bonusType: 'xp', bonusValue: 0.20 },
   { id: 'penguin', name: 'Penguen', price: 40000, icon: '🐧', desc: 'Nadir balık yakalama şansını %15 artırır.', bonusType: 'catch_rate', bonusValue: 0.15 }
+];
+
+export const WHEEL_REWARDS = [
+  { id: 'money_small', type: 'money', amount: 500, label: '500 TL', color: '#fbbf24', probability: 0.3 },
+  { id: 'bait_pack', type: 'item', itemId: 'worm', count: 5, label: '5x Solucan', color: '#f87171', probability: 0.2 },
+  { id: 'xp_boost', type: 'buff', buffId: 'energy', label: 'Enerji İçeceği', color: '#a855f7', probability: 0.15 },
+  { id: 'money_medium', type: 'money', amount: 2500, label: '2.500 TL', color: '#fbbf24', probability: 0.15 },
+  { id: 'pearl_small', type: 'currency', amount: 1, label: '1 İnci', color: '#e879f9', probability: 0.1 },
+  { id: 'money_large', type: 'money', amount: 10000, label: '10.000 TL', color: '#fbbf24', probability: 0.05 },
+  { id: 'bait_legend', type: 'item', itemId: 'legendary_bait', count: 1, label: 'Efsanevi Yem', color: '#ef4444', probability: 0.04 },
+  { id: 'jackpot', type: 'money', amount: 50000, label: 'JACKPOT', color: '#10b981', probability: 0.01 }
+];
+
+export const LEAGUES: League[] = [
+  { id: 'bronze', name: 'Bronz Lig', minLP: 0, icon: '🥉', color: 'text-orange-700' },
+  { id: 'silver', name: 'Gümüş Lig', minLP: 500, icon: '🥈', color: 'text-slate-400' },
+  { id: 'gold', name: 'Altın Lig', minLP: 1500, icon: '🥇', color: 'text-yellow-400' },
+  { id: 'platinum', name: 'Platin Lig', minLP: 3000, icon: '💠', color: 'text-cyan-400' },
+  { id: 'diamond', name: 'Elmas Lig', minLP: 5000, icon: '💎', color: 'text-blue-500' },
+  { id: 'legend', name: 'Efsanevi Lig', minLP: 10000, icon: '👑', color: 'text-fuchsia-500' }
+];
+
+export const RIVALS: Rival[] = [
+  { id: 'rookie', name: 'Çırak Kemal', title: 'Acemi Balıkçı', icon: '🧢', difficulty: 1, minLeague: 'bronze', rewardLP: 25 },
+  { id: 'hobbyist', name: 'Emekli Salih', title: 'Haftasonu Balıkçısı', icon: '👴', difficulty: 2, minLeague: 'bronze', rewardLP: 35 },
+  { id: 'pro', name: 'Usta Nuri', title: 'Yerel Efsane', icon: '🎣', difficulty: 3.5, minLeague: 'silver', rewardLP: 50 },
+  { id: 'diver', name: 'Dalgıç Cem', title: 'Derin Suların Hakimi', icon: '🤿', difficulty: 5, minLeague: 'gold', rewardLP: 75 },
+  { id: 'captain', name: 'Kaptan Barbaros', title: 'Deniz Kurdu', icon: '⚓', difficulty: 7, minLeague: 'platinum', rewardLP: 100 },
+  { id: 'mermaid', name: 'Siren', title: 'Okyanusun Sesi', icon: '🧜‍♀️', difficulty: 9, minLeague: 'diamond', rewardLP: 150 },
+  { id: 'poseidon', name: 'Poseidon', title: 'Denizler Tanrısı', icon: '🔱', difficulty: 12, minLeague: 'legend', rewardLP: 300 }
 ];
 
 export const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [

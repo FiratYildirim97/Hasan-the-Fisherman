@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../GameContext';
-import { RODS, BAITS, BOBBERS, DECORATIONS, CHARMS, SKILLS, LOCATIONS, FISH_DB, ACHIEVEMENTS, PETS, PRESTIGE_UPGRADES, CRAFTING_RECIPES } from '../constants';
-import { Briefcase, ShoppingCart, Map, BookOpen, ScrollText, Anchor, Settings, X, Fish, Recycle, Volume2, VolumeX, Trophy, Crown, Target, TrendingUp, Sparkles, Droplets, Zap, Utensils, RefreshCw, Landmark, SlidersHorizontal, ArrowUpDown, Bell, Waves, PawPrint, Star, Hammer, Gem, Radio, Music, Dices, CalendarCheck, Menu, ChefHat, ShoppingBag, Store, Info, HandHeart } from 'lucide-react';
+import { RODS, BAITS, BOBBERS, DECORATIONS, CHARMS, SKILLS, LOCATIONS, FISH_DB, ACHIEVEMENTS, PETS, PRESTIGE_UPGRADES, CRAFTING_RECIPES, RIVALS, LEAGUES, WHEEL_REWARDS } from '../constants';
+import { Briefcase, ShoppingCart, Map, BookOpen, ScrollText, Anchor, Settings, X, Fish, Recycle, Volume2, VolumeX, Trophy, Crown, Target, TrendingUp, Sparkles, Droplets, Zap, Utensils, RefreshCw, Landmark, SlidersHorizontal, ArrowUpDown, Bell, Waves, PawPrint, Star, Hammer, Gem, Radio, Music, Dices, CalendarCheck, Menu, ChefHat, ShoppingBag, Store, Info, HandHeart, Swords, Moon, Scale, Trash2 } from 'lucide-react';
 import { Modal } from './Modal';
 import { ItemType, CatchItem, FishVisual } from '../types';
 import { FishRenderer } from './Scene';
@@ -78,7 +78,8 @@ export const UIOverlay: React.FC = () => {
     radioStation, cycleRadio, hookFish, playSlotMachine,
     dailyRewardPopup, claimDailyReward,
     restaurant, activeCustomers = [], buyIngredient, serveCustomer, rejectCustomer, isRestaurantOpen, setIsRestaurantOpen, unlockRestaurant,
-    activeEvent
+    activeEvent,
+    duel, startDuel, surrenderDuel
   } = useGame();
   
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -95,22 +96,29 @@ export const UIOverlay: React.FC = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [lastWin, setLastWin] = useState<{ amount: number, type: string } | null>(null);
 
+  // Wheel State
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const [isWheelSpinning, setIsWheelSpinning] = useState(false);
+
   useEffect(() => {
       if (setIsRestaurantOpen) setIsRestaurantOpen(activeModal === 'restaurant');
   }, [activeModal, setIsRestaurantOpen]);
 
-  const getBagPercent = () => (bag.length / stats.bagLimit) * 100;
-  const getXpPercent = () => (stats.xp / (stats.level * 300)) * 100;
+  const handleWheelSpin = () => {
+      if (isWheelSpinning || Date.now() < spinAvailable) return;
+      setIsWheelSpinning(true);
+      
+      const winningIndex = spinWheel(); 
+      
+      const segmentAngle = 360 / WHEEL_REWARDS.length;
+      const targetAngle = 360 * 5 + (360 - (winningIndex * segmentAngle) - (segmentAngle/2)); 
+      
+      setWheelRotation(prev => prev + targetAngle);
 
-  const sortedBag = [...bag].sort((a, b) => {
-      if (settings.sortMode === 'value') return b.value - a.value;
-      if (settings.sortMode === 'weight') return b.weight - a.weight;
-      return 0; // recent
-  });
-
-  const canDive = stats.locId >= 7; 
-  const canPrestige = stats.level >= 50;
-  const showPrestige = stats.level >= 50 || stats.prestigeLevel > 0;
+      setTimeout(() => {
+          setIsWheelSpinning(false);
+      }, 3000);
+  };
 
   const handleSlotSpin = () => {
       if (stats.money < slotBet) return;
@@ -127,6 +135,22 @@ export const UIOverlay: React.FC = () => {
           }
       }, 1000);
   };
+
+  const getBagPercent = () => (bag.length / stats.bagLimit) * 100;
+  const getXpPercent = () => (stats.xp / (stats.level * 300)) * 100;
+
+  const sortedBag = [...bag].sort((a, b) => {
+      if (settings.sortMode === 'value') return b.value - a.value;
+      if (settings.sortMode === 'weight') return b.weight - a.weight;
+      return 0; // recent
+  });
+
+  const canDive = stats.locId >= 7; 
+  const canPrestige = stats.level >= 50;
+  const showPrestige = stats.level >= 50 || stats.prestigeLevel > 0;
+
+  const currentLeague = LEAGUES.slice().reverse().find(l => stats.leaguePoints >= l.minLP) || LEAGUES[0];
+  const nextLeague = LEAGUES.find(l => l.minLP > stats.leaguePoints);
 
   const renderBagItem = (item: CatchItem) => {
       const mult = marketMultipliers[item.name] || 1;
@@ -218,10 +242,11 @@ export const UIOverlay: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
               <Section title="Temel">
                   <SidebarBtn icon={<Briefcase size={20} />} label="Çanta" onClick={() => { setActiveModal('bag'); setIsSidebarOpen(false); }} badge={getBagPercent() >= 100 ? 'DOLU' : bag.length > 0 ? bag.length.toString() : undefined} />
+                  <SidebarBtn icon={<Swords size={20} />} label="Rekabet (Lig)" onClick={() => { setActiveModal('duels'); setIsSidebarOpen(false); }} />
                   <SidebarBtn icon={<ChefHat size={20} />} label="Restoran" onClick={() => { setActiveModal('restaurant'); setIsSidebarOpen(false); }} badge={!restaurant?.isUnlocked && stats.level >= 5 ? 'YENİ' : activeCustomers.length > 0 ? activeCustomers.length : undefined} />
                   <SidebarBtn icon={<Fish size={20} />} label="Akvaryum" onClick={() => { setActiveModal('aqua'); setIsSidebarOpen(false); }} badge={aquarium.length >= stats.aquaLimit ? 'DOLU' : undefined} />
                   <SidebarBtn icon={<ShoppingCart size={20} />} label="Market" onClick={() => { setActiveModal('shop'); setIsSidebarOpen(false); }} badge={activeDiscount ? '%' : undefined} />
-                  <SidebarBtn icon={<ScrollText size={20} />} label="Görevler" onClick={() => { setActiveModal('quests'); setIsSidebarOpen(false); }} badge={quests.some(q => !q.claimed && q.current >= q.target) ? '!' : undefined} />
+                  <SidebarBtn icon={<ScrollText size={20} />} label="Görevler & Çark" onClick={() => { setActiveModal('quests'); setIsSidebarOpen(false); }} badge={quests.some(q => !q.claimed && q.current >= q.target) ? '!' : undefined} />
                   <SidebarBtn icon={<PawPrint size={20} />} label="Yoldaşlar" onClick={() => { setActiveModal('pets'); setIsSidebarOpen(false); }} />
               </Section>
               
@@ -241,7 +266,6 @@ export const UIOverlay: React.FC = () => {
           </div>
       </div>
 
-      {/* BAG MODAL */}
       <Modal isOpen={activeModal === 'bag'} onClose={() => setActiveModal(null)} title={`Sırt Çantası (${bag.length}/${stats.bagLimit})`}>
           <div className="flex justify-between mb-4">
               <button onClick={() => toggleSetting('sortMode')} className="text-xs bg-slate-800 p-2 rounded text-slate-300 flex items-center gap-1"><ArrowUpDown size={12}/> {settings.sortMode === 'recent' ? 'Son' : settings.sortMode === 'value' ? 'Değer' : 'Ağırlık'}</button>
@@ -255,178 +279,147 @@ export const UIOverlay: React.FC = () => {
           </div>
       </Modal>
 
-      {/* AQUARIUM MODAL */}
-      <Modal isOpen={activeModal === 'aqua'} onClose={() => setActiveModal(null)} title={`Akvaryum (${aquarium.length}/${stats.aquaLimit})`}>
-          <div className="flex justify-between mb-4">
-              <div className="text-xs text-slate-400">Temizlik: {filterExpiry > Date.now() ? <span className="text-green-400">İyi</span> : <span className="text-red-400">Kötü (Gelir Azalır)</span>}</div>
-              <div className="flex gap-2">
-                  <button onClick={cleanAquarium} className="px-3 py-1 bg-cyan-700 rounded text-white text-xs font-bold hover:bg-cyan-600">Temizle (250 TL)</button>
-              </div>
-          </div>
-          
-          <div className="relative w-full h-64 bg-gradient-to-b from-blue-800 to-slate-900 rounded-xl overflow-hidden border border-blue-600 shadow-inner">
-              <div className="absolute top-0 w-full h-4 bg-blue-400/30 animate-pulse z-10" />
-              
-              <div 
-                  className="absolute inset-0 z-20 pointer-events-none transition-opacity duration-1000 bg-gradient-to-b from-green-900/40 to-brown-900/60 mix-blend-multiply"
-                  style={{ opacity: filterExpiry > Date.now() ? 0 : 0.7 }}
-              />
-
-              <div className="absolute bottom-0 w-full h-8 bg-[#3d342b] z-0 opacity-80" />
-              <div className="absolute bottom-2 left-4 text-2xl z-0">🌿</div>
-              <div className="absolute bottom-2 right-10 text-2xl z-0">🪨</div>
-
-              {aquarium.length === 0 ? (
-                  <div className="absolute inset-0 flex items-center justify-center text-slate-400/50">Balık Yok</div>
-              ) : (
-                  aquarium.map((item, idx) => {
-                      const top = 10 + (idx * 17) % 70;
-                      const left = 10 + (idx * 23) % 80;
-                      const delay = idx * 0.5;
-                      const duration = 5 + (idx % 3) * 2;
-                      
-                      return (
-                          <div 
-                              key={item.id} 
-                              className="absolute z-10 flex flex-col items-center"
-                              style={{ 
-                                  top: `${top}%`, 
-                                  left: `${left}%`,
-                                  animation: `swim ${duration}s ease-in-out infinite alternate`,
-                                  animationDelay: `${delay}s`
-                              }}
-                          >
-                              <div className="w-12 h-12 transition-transform hover:scale-125 cursor-pointer" onClick={() => sellItem(item.id, true)}>
-                                  <FishRenderer visual={item.visual} />
-                              </div>
-                              <div className="text-[9px] text-white/70 bg-black/30 px-1 rounded backdrop-blur-sm mt-1">{item.name}</div>
+      <Modal isOpen={activeModal === 'duels'} onClose={() => setActiveModal(null)} title="Rekabet Ligi">
+          <div className="space-y-6">
+              <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-center relative overflow-hidden">
+                  <div className={`absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-${currentLeague.color.replace('text-', 'bg-')}/50 to-transparent`} />
+                  <div className={`text-6xl mb-2 ${currentLeague.color}`}>{currentLeague.icon}</div>
+                  <div className={`text-2xl font-black ${currentLeague.color} uppercase tracking-widest`}>{currentLeague.name}</div>
+                  <div className="text-xs text-slate-400 font-mono mt-1">{stats.leaguePoints} LP</div>
+                  {nextLeague && (
+                      <div className="mt-4">
+                          <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                              <span>Sonraki Lig: {nextLeague.name}</span>
+                              <span>{nextLeague.minLP - stats.leaguePoints} LP kaldı</span>
                           </div>
-                      );
-                  })
-              )}
-              <style>{`
-                  @keyframes swim {
-                      0% { transform: translateX(0) scaleX(1); }
-                      50% { transform: translateX(20px) translateY(-5px) scaleX(1); }
-                      100% { transform: translateX(-20px) translateY(5px) scaleX(1); }
-                  }
-              `}</style>
-          </div>
-          <div className="text-center text-[10px] text-slate-500 mt-2">Balıklara tıklayarak satabilirsin.</div>
-      </Modal>
-
-      {/* PEDIA MODAL */}
-      <Modal isOpen={activeModal === 'pedia'} onClose={() => { setActiveModal(null); setSelectedFish(null); }} title="Ansiklopedi & Müze">
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-              {LOCATIONS.filter(l => unlockedLocs.includes(l.id)).map(l => (
-                  <button key={l.id} onClick={() => { setMuseumLoc(l.id); setSelectedFish(null); }} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${museumLoc === l.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                      {l.name}
-                  </button>
-              ))}
-          </div>
-
-          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-              {Object.values(FISH_DB[museumLoc] || []).filter(f => f.type !== ItemType.JUNK).map((f, i) => {
-                  const entry = pedia[f.name];
-                  const caught = !!entry;
-                  return (
-                      <div 
-                          key={i} 
-                          onClick={() => caught && setSelectedFish(f.name)}
-                          className={`aspect-square rounded-xl flex flex-col items-center justify-center border relative cursor-pointer hover:border-cyan-400 transition-colors ${entry ? 'bg-slate-800 border-slate-600' : 'bg-slate-900 border-slate-800 opacity-50'}`}
-                      >
-                          {entry ? (
-                              <div className="w-10 h-10"><FishRenderer visual={f.visual} /></div>
-                          ) : (
-                              <div className="text-2xl grayscale brightness-0 opacity-30">?</div>
-                          )}
-                          
-                          {entry && entry.donated && (
-                              <div className="absolute bottom-0 right-0 bg-purple-600 text-white text-[8px] px-1 rounded-tl shadow">MÜZE</div>
-                          )}
-                          {entry && !entry.donated && bag.some(b => b.name === f.name) && (
-                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                          )}
+                          <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                              <div className={`h-full ${nextLeague.color.replace('text-', 'bg-')} transition-all duration-500`} style={{ width: `${Math.min(100, ((stats.leaguePoints - currentLeague.minLP) / (nextLeague.minLP - currentLeague.minLP)) * 100)}%` }} />
+                          </div>
                       </div>
-                  );
-              })}
-          </div>
-
-          {selectedFish && (
-              <div className="mt-4 p-4 bg-slate-800 rounded-2xl border border-slate-700 animate-slide-up">
-                  {(() => {
-                      const fishDef = Object.values(FISH_DB[museumLoc]).find(f => f.name === selectedFish);
-                      const entry = pedia[selectedFish];
-                      const inBagItem = bag.find(b => b.name === selectedFish);
-
-                      if (!fishDef || !entry) return null;
-
-                      return (
-                          <div className="flex gap-4">
-                              <div className="w-20 h-20 bg-slate-900 rounded-xl flex items-center justify-center border border-slate-600">
-                                  <div className="w-16 h-16"><FishRenderer visual={fishDef.visual} /></div>
-                              </div>
-                              <div className="flex-1">
-                                  <div className="flex justify-between items-start">
-                                      <h3 className="font-bold text-white text-lg">{fishDef.name}</h3>
-                                      {entry.donated ? (
-                                          <span className="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-1 rounded border border-purple-500/30 flex items-center gap-1"><Landmark size={10}/> Müzede</span>
-                                      ) : (
-                                          inBagItem && (
-                                              <button onClick={() => donateFish(inBagItem.id)} className="text-[10px] bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded font-bold flex items-center gap-1 animate-pulse">
-                                                  <HandHeart size={10} /> BAĞIŞLA
-                                              </button>
-                                          )
-                                      )}
-                                  </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-2 mt-2">
-                                      <div className="text-xs text-slate-400 bg-slate-900/50 p-1.5 rounded">En Ağır: <span className="text-white">{entry.maxWeight}kg</span></div>
-                                      <div className="text-xs text-slate-400 bg-slate-900/50 p-1.5 rounded">Yakalama: <span className="text-white">{entry.count}</span></div>
-                                  </div>
-                                  
-                                  <div className="flex gap-2 mt-2">
-                                      {entry.shinyCaught && <span className="text-[10px] text-cyan-400 bg-cyan-900/20 px-2 rounded border border-cyan-500/30">✨ Parlak</span>}
-                                      {entry.goldenCaught && <span className="text-[10px] text-yellow-400 bg-yellow-900/20 px-2 rounded border border-yellow-500/30">🏆 Altın</span>}
-                                  </div>
-                              </div>
-                          </div>
-                      );
-                  })()}
+                  )}
               </div>
-          )}
-      </Modal>
-
-      <Modal isOpen={activeModal === 'quests'} onClose={() => setActiveModal(null)} title="Görevler">
-          <div className="space-y-3">
-              {quests.map((q, i) => (
-                  <div key={q.id} className={`p-3 rounded-xl border flex justify-between items-center ${q.claimed ? 'bg-slate-800/50 border-slate-800 opacity-50' : 'bg-slate-800 border-slate-700'}`}>
-                      <div className="flex-1 mr-4">
-                          <div className="font-bold text-slate-200 text-sm mb-1">{q.desc}</div>
-                          <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                              <span>İlerleme</span>
-                              <span>{q.current} / {q.target}</span>
-                          </div>
-                          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                              <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${Math.min(100, (q.current/q.target)*100)}%` }} />
-                          </div>
-                          <div className="text-xs text-yellow-400 mt-1 font-mono">Ödül: {q.reward} TL</div>
-                      </div>
-                      <button 
-                        onClick={() => claimQuest(i)} 
-                        disabled={q.claimed || q.current < q.target}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap ${q.claimed ? 'text-green-500 border border-green-900/30' : q.current >= q.target ? 'bg-green-600 text-white animate-pulse shadow-lg shadow-green-900/50' : 'bg-slate-700 text-slate-500'}`}
-                      >
-                          {q.claimed ? 'ALINDI' : 'AL'}
-                      </button>
+              <Section title="Rakipler">
+                  <div className="space-y-3">
+                      {RIVALS.map(rival => {
+                          const unlocked = stats.leaguePoints >= (LEAGUES.find(l => l.id === rival.minLeague)?.minLP || 0);
+                          const active = duel.active && duel.rivalId === rival.id;
+                          return (
+                              <div key={rival.id} className={`p-3 rounded-xl border flex items-center justify-between ${active ? 'bg-red-900/30 border-red-500 animate-pulse' : unlocked ? 'bg-slate-800 border-slate-700' : 'bg-slate-900 border-slate-800 opacity-60'}`}>
+                                  <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center text-2xl border border-slate-600">{rival.icon}</div>
+                                      <div>
+                                          <div className="font-bold text-slate-200">{rival.name}</div>
+                                          <div className="text-[10px] text-slate-400">{rival.title}</div>
+                                          <div className="flex gap-2 mt-1">
+                                              <span className="text-[9px] bg-slate-700 px-1.5 rounded text-white">Zorluk: {rival.difficulty}/10</span>
+                                              <span className="text-[9px] bg-yellow-900/30 text-yellow-400 px-1.5 rounded border border-yellow-500/20">+{rival.rewardLP} LP</span>
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <button onClick={() => { setActiveModal(null); startDuel(rival.id); }} disabled={!unlocked || duel.active} className={`px-4 py-2 rounded-lg text-xs font-bold ${active ? 'bg-red-600 text-white' : unlocked && !duel.active ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 text-slate-500'}`}>{active ? 'SAVAŞTA' : unlocked ? 'DÜELLO' : 'KİLİTLİ'}</button>
+                              </div>
+                          );
+                      })}
                   </div>
-              ))}
-              <div className="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center mt-4">
-                  <div className="text-slate-400 text-xs mb-2">Günlük Şans Çarkı</div>
-                  <button onClick={spinWheel} className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg text-white font-bold text-sm shadow-lg hover:scale-105 transition-transform">
-                      ÇARK ÇEVİR
+              </Section>
+          </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'quests'} onClose={() => setActiveModal(null)} title="Görevler & Şans">
+          <div className="space-y-6">
+              <div className="bg-gradient-to-b from-purple-900/50 to-slate-900 p-4 rounded-3xl border border-purple-500/30 flex flex-col items-center relative overflow-hidden">
+                  <div className="absolute top-0 w-full h-full bg-[radial-gradient(circle,rgba(168,85,247,0.2)_0%,transparent_70%)] pointer-events-none" />
+                  
+                  <h3 className="font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 tracking-widest mb-4 flex items-center gap-2">
+                      <Dices size={20} /> GÜNLÜK ÇARK
+                  </h3>
+
+                  <div className="relative w-48 h-48 sm:w-56 sm:h-56">
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 text-white filter drop-shadow-lg text-3xl">▼</div>
+                      
+                      <div 
+                          className="w-full h-full rounded-full border-4 border-slate-800 shadow-2xl relative overflow-hidden transition-transform duration-[3000ms] cubic-bezier(0.2, 0.8, 0.2, 1)"
+                          style={{ 
+                              transform: `rotate(${wheelRotation}deg)`,
+                              background: `conic-gradient(
+                                  ${WHEEL_REWARDS.map((r, i) => `${r.color} ${i * (360/8)}deg ${(i+1) * (360/8)}deg`).join(', ')}
+                              )` 
+                          }}
+                      >
+                          {WHEEL_REWARDS.map((r, i) => (
+                              <div 
+                                  key={r.id} 
+                                  className="absolute top-0 left-1/2 w-full h-full origin-bottom-left flex justify-center pt-2"
+                                  style={{ 
+                                      transform: `rotate(${i * (360/8) + (360/16)}deg) translate(-50%, 0)`,
+                                      transformOrigin: '50% 50%' 
+                                  }}
+                              >
+                                  <div className="text-[10px] font-bold text-white drop-shadow-md text-center w-12 -mt-20 transform -rotate-90">
+                                      {r.type === 'money' ? '💰' : r.type === 'buff' ? '⚡' : r.type === 'currency' ? '💎' : '🎁'}
+                                  </div>
+                              </div>
+                          ))}
+                          <div className="absolute inset-0 rounded-full border-[10px] border-slate-900/20 pointer-events-none" />
+                      </div>
+                      
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full shadow-xl border-4 border-slate-300 flex items-center justify-center z-10">
+                          <div className="w-8 h-8 bg-slate-800 rounded-full" />
+                      </div>
+                  </div>
+
+                  <button 
+                      onClick={handleWheelSpin} 
+                      disabled={isWheelSpinning || Date.now() < spinAvailable}
+                      className={`mt-6 px-8 py-3 rounded-full font-black text-white shadow-lg transition-all active:scale-95 z-10 ${isWheelSpinning || Date.now() < spinAvailable ? 'bg-slate-700 text-slate-500' : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:brightness-110 shadow-purple-900/50 animate-pulse'}`}
+                  >
+                      {isWheelSpinning ? 'DÖNÜYOR...' : Date.now() < spinAvailable ? `SÜRE: ${Math.ceil((spinAvailable - Date.now())/3600000)}s` : 'ÇEVİR!'}
                   </button>
+                  {Date.now() < spinAvailable && (
+                      <div className="text-[10px] text-slate-500 mt-2 font-mono">
+                          Sonraki Çevirme: {new Date(spinAvailable).toLocaleTimeString()}
+                      </div>
+                  )}
               </div>
+
+              <Section title="Günlük Görevler">
+                  <div className="space-y-3">
+                      {quests.map((q, i) => {
+                          const isMoney = q.type === 'money';
+                          const isRare = q.type === 'rare';
+                          const isJunk = q.type === 'junk';
+                          const isNight = q.type === 'night';
+                          const isWeight = q.type === 'weight';
+                          
+                          return (
+                              <div key={q.id} className={`p-3 rounded-xl border flex justify-between items-center ${q.claimed ? 'bg-slate-800/50 border-slate-800 opacity-50' : 'bg-slate-800 border-slate-700'}`}>
+                                  <div className="flex items-center gap-3 flex-1 mr-2">
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isMoney ? 'bg-green-900/50 text-green-400' : isRare ? 'bg-purple-900/50 text-purple-400' : isJunk ? 'bg-orange-900/50 text-orange-400' : isNight ? 'bg-indigo-900/50 text-indigo-400' : isWeight ? 'bg-red-900/50 text-red-400' : 'bg-blue-900/50 text-blue-400'}`}>
+                                          {isMoney ? <TrendingUp size={18}/> : isRare ? <Star size={18}/> : isJunk ? <Trash2 size={18}/> : isNight ? <Moon size={18}/> : isWeight ? <Scale size={18}/> : <Target size={18}/>}
+                                      </div>
+                                      <div className="flex-1">
+                                          <div className="font-bold text-slate-200 text-sm mb-1">{q.desc}</div>
+                                          <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                              <div className="h-full bg-cyan-500 transition-all duration-500" style={{ width: `${Math.min(100, (q.current/q.target)*100)}%` }} />
+                                          </div>
+                                          <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                                              <span>{Math.round(q.current * 10) / 10} / {q.target}</span>
+                                              <span className="text-yellow-400 font-bold">{q.reward} TL</span>
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => claimQuest(i)} 
+                                    disabled={q.claimed || q.current < q.target}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${q.claimed ? 'text-green-500 border border-green-900/30' : q.current >= q.target ? 'bg-green-600 text-white animate-pulse shadow-lg shadow-green-900/50 scale-105' : 'bg-slate-700 text-slate-500'}`}
+                                  >
+                                      {q.claimed ? 'TAMAM' : 'AL'}
+                                  </button>
+                              </div>
+                          );
+                      })}
+                  </div>
+              </Section>
           </div>
       </Modal>
 
@@ -788,6 +781,87 @@ export const UIOverlay: React.FC = () => {
           )}
           <div className="space-y-2">{LOCATIONS.map(l => { const unlocked = unlockedLocs.includes(l.id); const current = stats.locId === l.id; return (<div key={l.id} className={`flex items-center justify-between p-3 rounded-xl border ${current ? 'bg-blue-900/20 border-blue-500' : 'bg-slate-800 border-slate-700 opacity-90'}`}><div className="flex items-center gap-3"><span className="text-2xl grayscale-[50%]">{l.icon}</span><span className={`font-bold text-sm ${current ? 'text-blue-300' : 'text-slate-300'}`}>{l.name}</span></div>{unlocked ? (current ? <span className="text-xs font-bold text-blue-400 px-3">BURADASIN</span> : <button onClick={() => {travel(l.id); setActiveModal(null)}} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-white">GİT</button>) : (<button onClick={() => buyItem('location', l.id)} className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-xs font-bold text-white flex gap-1 items-center">{l.price} TL</button>)}</div>)})}</div></Modal>
       
+      <Modal isOpen={activeModal === 'pedia'} onClose={() => { setActiveModal(null); setSelectedFish(null); }} title="Ansiklopedi & Müze">
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+              {LOCATIONS.filter(l => unlockedLocs.includes(l.id)).map(l => (
+                  <button key={l.id} onClick={() => { setMuseumLoc(l.id); setSelectedFish(null); }} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${museumLoc === l.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                      {l.name}
+                  </button>
+              ))}
+          </div>
+
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+              {Object.values(FISH_DB[museumLoc] || []).filter(f => f.type !== ItemType.JUNK).map((f, i) => {
+                  const entry = pedia[f.name];
+                  const caught = !!entry;
+                  return (
+                      <div 
+                          key={i} 
+                          onClick={() => caught && setSelectedFish(f.name)}
+                          className={`aspect-square rounded-xl flex flex-col items-center justify-center border relative cursor-pointer hover:border-cyan-400 transition-colors ${entry ? 'bg-slate-800 border-slate-600' : 'bg-slate-900 border-slate-800 opacity-50'}`}
+                      >
+                          {entry ? (
+                              <div className="w-10 h-10"><FishRenderer visual={f.visual} /></div>
+                          ) : (
+                              <div className="text-2xl grayscale brightness-0 opacity-30">?</div>
+                          )}
+                          
+                          {entry && entry.donated && (
+                              <div className="absolute bottom-0 right-0 bg-purple-600 text-white text-[8px] px-1 rounded-tl shadow">MÜZE</div>
+                          )}
+                          {entry && !entry.donated && bag.some(b => b.name === f.name) && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                          )}
+                      </div>
+                  );
+              })}
+          </div>
+
+          {selectedFish && (
+              <div className="mt-4 p-4 bg-slate-800 rounded-2xl border border-slate-700 animate-slide-up">
+                  {(() => {
+                      const fishDef = Object.values(FISH_DB[museumLoc]).find(f => f.name === selectedFish);
+                      const entry = pedia[selectedFish];
+                      const inBagItem = bag.find(b => b.name === selectedFish);
+
+                      if (!fishDef || !entry) return null;
+
+                      return (
+                          <div className="flex gap-4">
+                              <div className="w-20 h-20 bg-slate-900 rounded-xl flex items-center justify-center border border-slate-600">
+                                  <div className="w-16 h-16"><FishRenderer visual={fishDef.visual} /></div>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex justify-between items-start">
+                                      <h3 className="font-bold text-white text-lg">{fishDef.name}</h3>
+                                      {entry.donated ? (
+                                          <span className="text-[10px] bg-purple-900/50 text-purple-300 px-2 py-1 rounded border border-purple-500/30 flex items-center gap-1"><Landmark size={10}/> Müzede</span>
+                                      ) : (
+                                          inBagItem && (
+                                              <button onClick={() => donateFish(inBagItem.id)} className="text-[10px] bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded font-bold flex items-center gap-1 animate-pulse">
+                                                  <HandHeart size={10} /> BAĞIŞLA
+                                              </button>
+                                          )
+                                      )}
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-2 mt-2">
+                                      <div className="text-xs text-slate-400 bg-slate-900/50 p-1.5 rounded">En Ağır: <span className="text-white">{entry.maxWeight}kg</span></div>
+                                      <div className="text-xs text-slate-400 bg-slate-900/50 p-1.5 rounded">Yakalama: <span className="text-white">{entry.count}</span></div>
+                                  </div>
+                                  
+                                  <div className="flex gap-2 mt-2">
+                                      {entry.shinyCaught && <span className="text-[10px] text-cyan-400 bg-cyan-900/20 px-2 rounded border border-cyan-500/30">✨ Parlak</span>}
+                                      {entry.goldenCaught && <span className="text-[10px] text-yellow-400 bg-yellow-900/20 px-2 rounded border border-yellow-500/30">🏆 Altın</span>}
+                                  </div>
+                              </div>
+                          </div>
+                      );
+                  })()}
+              </div>
+          )}
+      </Modal>
+
       <Modal isOpen={activeModal === 'slots'} onClose={() => setActiveModal(null)} title="Slot Makinesi">
           <div className="flex flex-col items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
               <div className="text-center text-xs text-slate-400 mb-2">Şansını dene, servetini katla!</div>
@@ -831,9 +905,44 @@ export const UIOverlay: React.FC = () => {
           </div>
       )}
 
+      {duel.active && !duel.finished && (
+          <div className="absolute top-20 inset-x-0 z-40 px-4 animate-slide-up">
+              <div className="bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700 shadow-2xl p-3 flex flex-col gap-2 relative overflow-hidden">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-slate-800 rounded-b-lg px-3 py-1 font-mono text-xl font-black text-white shadow-lg z-10 border border-t-0 border-slate-600">
+                      {duel.duration}s
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest mb-4 mt-2">
+                      <span className="text-blue-400">SİZ</span>
+                      <span className="text-red-400">{RIVALS.find(r => r.id === duel.rivalId)?.name}</span>
+                  </div>
+
+                  <div className="relative w-full h-6 bg-slate-800 rounded-full overflow-hidden border border-slate-600">
+                      <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/30 z-10" />
+                      
+                      <div 
+                          className="absolute top-0 bottom-0 left-0 bg-blue-600 transition-all duration-300 ease-out" 
+                          style={{ width: `${Math.min(100, Math.max(0, 50 + ((duel.playerScore - duel.rivalScore) / 100) * 10))}%` }} 
+                      />
+                      <div 
+                          className="absolute top-0 bottom-0 right-0 bg-red-600 transition-all duration-300 ease-out" 
+                          style={{ width: `${Math.min(100, Math.max(0, 50 + ((duel.rivalScore - duel.playerScore) / 100) * 10))}%` }} 
+                      />
+                  </div>
+
+                  <div className="flex justify-between items-center font-mono font-bold text-lg px-2">
+                      <span className="text-blue-300">{duel.playerScore}</span>
+                      <span className="text-red-300">{duel.rivalScore}</span>
+                  </div>
+                  
+                  <button onClick={surrenderDuel} className="text-[10px] text-slate-500 hover:text-white underline text-center">Pes Et</button>
+              </div>
+          </div>
+      )}
+
       <div className="absolute bottom-36 w-full overflow-hidden bg-slate-900/80 border-y border-white/5 backdrop-blur-sm z-20 h-6 flex items-center pointer-events-none">
           <div className="whitespace-nowrap animate-[marquee_15s_linear_infinite] text-[10px] font-mono text-cyan-300 px-4">
-              📢 {newsTicker} &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; 🏦 Banka Faizi: %1/dk &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; 🏆 Turnuva Yakında!
+              📢 {newsTicker} &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; 🏦 Banka Faizi: %1/dk &nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp; 🏆 Lig Sezonu Devam Ediyor!
           </div>
       </div>
 
@@ -871,42 +980,6 @@ export const UIOverlay: React.FC = () => {
             {buffs.goldenHook && (<div className="bg-yellow-900/80 border border-yellow-500/50 px-2 py-0.5 rounded text-[9px] text-yellow-200 font-bold animate-pulse flex items-center gap-1"><Anchor size={10} /> Altın İğne</div>)}
         </div>
       </div>
-
-      {tournament.active && (
-        <div className="absolute top-24 left-2 z-20 pointer-events-none animate-slide-in-left origin-top-left scale-90 sm:scale-100">
-           <div className="bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl shadow-[0_0_15px_rgba(234,88,12,0.4)] border-l-4 border-orange-500 w-36">
-              <div className="flex items-center gap-2 text-orange-400 font-black text-[10px] uppercase tracking-widest mb-1"><Crown size={12} className="animate-bounce" /> Turnuva</div>
-              <div className="w-full h-1 bg-slate-700 rounded-full overflow-hidden mb-1"><div className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-1000 linear" style={{ width: `${(tournament.timeLeft / 60) * 100}%` }} /></div>
-              <div className="flex justify-between items-end"><div className="text-lg font-mono font-bold text-white leading-none">{tournament.playerScore}</div><div className="text-[9px] text-slate-400 font-bold uppercase">PUAN</div></div>
-           </div>
-        </div>
-      )}
-
-      {bounty.active && (
-        <div className="absolute top-24 right-2 z-20 pointer-events-none animate-slide-in-right origin-top-right scale-90 sm:scale-100">
-           <div className="bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl shadow-[0_0_15px_rgba(234,88,12,0.4)] border-r-4 border-red-500 w-36 text-right">
-              <div className="flex items-center justify-end gap-2 text-red-400 font-black text-[10px] uppercase tracking-widest mb-1">ARANAN <Target size={12} className="animate-pulse" /></div>
-              <div className="flex justify-between items-center mb-1"><div className="text-2xl animate-bounce">{FISH_DB[bounty.locId].find(f => f.name === bounty.fishName)?.emoji}</div><div><div className="text-sm font-bold text-white leading-none">{bounty.fishName}</div><div className="text-xs text-slate-400 font-mono">Min {bounty.minWeight}kg</div></div></div>
-              <div className="text-[10px] text-yellow-400 font-bold bg-slate-800 rounded px-1 py-0.5 inline-block">Ödül: {bounty.reward} TL</div>
-           </div>
-        </div>
-      )}
-
-      {mysteryMerchant && mysteryMerchant.active && (
-          <div className="absolute top-36 right-4 z-40 animate-bounce pointer-events-auto">
-              <button onClick={() => setActiveModal('merchant')} className="bg-purple-600 hover:bg-purple-500 text-white p-3 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.6)] border-2 border-purple-300">
-                  <Gem size={24} />
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">!</span>
-              </button>
-              <div className="mt-1 text-center bg-black/60 rounded px-1 text-[9px] text-white font-mono">{Math.ceil((mysteryMerchant.expiry - Date.now())/1000)}s</div>
-          </div>
-      )}
-      
-      {combo > 1 && (
-         <div className="absolute top-44 left-1/2 -translate-x-1/2 z-10 pointer-events-none animate-scale-in">
-            <div className="text-center"><div className="text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-b from-fuchsia-400 to-purple-600 drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]">x{combo}</div><div className="text-[10px] font-bold text-fuchsia-200 bg-purple-900/60 px-2 py-0.5 rounded-full mt-1 border border-purple-500/30">+{Math.floor(combo * 10)}% Fiyat</div></div>
-         </div>
-      )}
 
       <div className="absolute bottom-0 w-full p-3 pb-safe-bottom z-30 flex flex-col gap-3 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent">
         <div className="flex justify-between px-2 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">

@@ -126,7 +126,7 @@ export interface Quest {
   current: number;
   reward: number;
   claimed: boolean;
-  type: 'count' | 'money' | 'rare';
+  type: 'count' | 'money' | 'rare' | 'weight' | 'junk' | 'night' | 'specific';
 }
 
 export interface LifetimeStats {
@@ -157,6 +157,7 @@ export interface PlayerStats {
   wormFarmLevel: number;
   dailyStreak: number;
   lastRewardTime: number;
+  leaguePoints: number;
 }
 
 export interface PediaEntry {
@@ -241,6 +242,35 @@ export interface GameEvent {
   duration: number;
   startTime: number;
   color: string;
+}
+
+export interface Rival {
+  id: string;
+  name: string;
+  title: string;
+  icon: string;
+  difficulty: number; 
+  minLeague: string; 
+  rewardLP: number;
+}
+
+export interface League {
+  id: string;
+  name: string;
+  minLP: number;
+  icon: string;
+  color: string;
+}
+
+export interface DuelState {
+  active: boolean;
+  rivalId: string | null;
+  startTime: number;
+  duration: number; 
+  playerScore: number;
+  rivalScore: number;
+  finished: boolean;
+  result: 'win' | 'lose' | 'draw' | null;
 }
 
 export interface SavedGame {
