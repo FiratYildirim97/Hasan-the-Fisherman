@@ -1,4 +1,5 @@
 
+// ... (imports remain the same)
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { 
   PlayerStats, CatchItem, Quest, GameState, WeatherType, PediaEntry, 
@@ -6,6 +7,8 @@ import {
   Bounty, MarketTrend, OwnedPet, MysteryMerchant, RadioStation, RestaurantState, Customer, GameEvent
 } from './types';
 import { RODS, FISH_DB, BAITS, BOBBERS, CHARMS, ACHIEVEMENTS, PRESTIGE_UPGRADES, CRAFTING_RECIPES } from './constants';
+
+// ... (Interface and Context definition remain the same)
 
 interface GameContextType {
   stats: PlayerStats;
@@ -199,7 +202,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [achievements, setAchievements] = useState<string[]>([]);
   const [pedia, setPedia] = useState<Record<string, PediaEntry>>({});
   const [toast, setToast] = useState<{ msg: string; color: string; sub?: string } | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Default to true (Muted)
   const [dailyFortune, setDailyFortune] = useState(FORTUNES[0]);
   
   const [rodMastery, setRodMastery] = useState<Record<number, number>>({});
@@ -314,10 +317,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           showToast("Olta Kırık! Tamir et.", "text-red-400");
           return;
       }
-      if (!stats.baitId) {
-          showToast("Yem Yok!", "text-red-400");
-          return;
-      }
+      // Removed bait requirement check
       setGameState(GameState.CASTING);
       playSound('cast');
       
@@ -367,7 +367,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCatchVisual(null);
       
       if (snapped) {
-          setStats(s => ({ ...s, rodHp: Math.max(0, s.rodHp - 2) }));
+          // HP Decreases by 1 on snap
+          setStats(s => ({ ...s, rodHp: Math.max(0, s.rodHp - 1) }));
           showToast("Misina Koptu!", "text-red-400");
           playSound('fail');
           setCombo(0);
@@ -409,7 +410,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...prev,
           xp: prev.xp + 10,
           money: prev.money + 5, // Instant small reward
-          rodHp: Math.max(0, prev.rodHp - 0.1),
+          rodHp: Math.max(0, prev.rodHp - 1), // HP Decreases by 1 on catch
           baitId: prev.baitId // Consumable logic could be here
       }));
 
@@ -447,6 +448,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   };
 
+  // ... (The rest of the file remains exactly as is: sellItem, sellAll, etc.)
+  
   const sellItem = (id: string, fromAqua = false) => {
       const list = fromAqua ? aquarium : bag;
       const item = list.find(i => i.id === id);
