@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../GameContext';
 import { RODS, LOCATIONS, BOBBERS } from '../constants';
 import { GameState, WeatherType, FishVisual } from '../types';
+import { Music, Radio } from 'lucide-react';
 
 export const Scene: React.FC = () => {
-  const { stats, gameState, weather, toast, floatingTexts, catchVisual, supplyCrate, collectCrate, playSound, timeOfDay } = useGame();
+  const { stats, gameState, weather, toast, floatingTexts, catchVisual, supplyCrate, collectCrate, playSound, timeOfDay, radioStation } = useGame();
   const location = LOCATIONS[stats.locId];
   const rod = RODS[stats.rodId];
 
@@ -49,19 +50,40 @@ export const Scene: React.FC = () => {
         weather={weather}
         timeOfDay={timeOfDay}
       />
+      
+      {/* Radio Visual Effects */}
+      {radioStation !== 'off' && (
+          <div className="absolute top-16 right-4 pointer-events-none">
+              <div className="relative">
+                 {[...Array(3)].map((_, i) => (
+                    <div 
+                        key={i} 
+                        className={`absolute text-2xl ${radioStation === 'nature' ? 'text-green-400' : 'text-purple-400'} animate-[floatUp_2s_ease-out_infinite]`}
+                        style={{ animationDelay: `${i * 0.7}s`, left: `${i * 10}px` }}
+                    >
+                        {radioStation === 'nature' ? '🍃' : '🎵'}
+                    </div>
+                 ))}
+              </div>
+          </div>
+      )}
+
       {ripples.map(r => (
           <div key={r.id} className="absolute w-4 h-4 border-2 border-white/50 rounded-full animate-[splash_1s_ease-out] pointer-events-none" style={{ left: `${r.x}%`, top: `${r.y}%` }} />
       ))}
+      
+      {/* SUPPLY CRATE */}
       {supplyCrate && supplyCrate.active && (
           <div 
-            className="absolute w-12 h-12 bg-amber-700 border-2 border-amber-500 rounded flex items-center justify-center text-2xl animate-[float_4s_ease-in-out_infinite] cursor-pointer hover:scale-110 transition-transform shadow-lg z-20"
+            className="absolute w-14 h-14 bg-amber-700 border-4 border-amber-900 rounded-lg flex items-center justify-center text-3xl animate-[float_3s_ease-in-out_infinite] cursor-pointer hover:scale-110 active:scale-95 transition-transform shadow-2xl z-40"
             style={{ left: `${supplyCrate.x}%`, top: `${supplyCrate.y}%` }}
             onClick={(e) => { e.stopPropagation(); collectCrate(); }}
           >
              📦
-             <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+             <div className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full animate-ping border border-white" />
           </div>
       )}
+
       {catchVisual && (
         <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
           {catchVisual.shiny && <div className="absolute inset-0 bg-white/20 animate-pulse mix-blend-overlay z-10" />}
@@ -119,11 +141,11 @@ export const Scene: React.FC = () => {
   );
 };
 
+// ... FishRenderer and LocationScene (Keep exactly as original)
 export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
   if (!visual) return <span>🐟</span>;
   const { shape, bodyColor, finColor, pattern } = visual;
   const uniqueId = React.useId();
-  
   let bodyPath = "";
   switch (shape) {
     case 'shark': bodyPath = "M90,30 Q60,10 20,40 Q60,70 90,50 Q100,40 90,30"; break;
@@ -146,7 +168,6 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
     default: bodyPath = "M85,35 Q60,10 20,40 Q60,70 85,45 Q95,40 85,35";
   }
   const textureUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Cyprinus_carpio_02.jpg/640px-Cyprinus_carpio_02.jpg";
-
   return (
     <svg viewBox="0 0 100 80" className="drop-shadow-lg overflow-visible">
       <defs>
@@ -174,27 +195,14 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
 };
 
 const LocationScene: React.FC<{ location: any, theme: { sky: string[], water: string[], sun: string }, weather: WeatherType, timeOfDay: string }> = ({ location, theme, weather, timeOfDay }) => {
-  // Construct dynamic background image URL based on location name, biome and time of day
-  // Using pollination.ai prompt to generate unique visuals without 60 hardcoded URLs
-  const timeDesc = timeOfDay === 'night' ? 'night time, starry sky, moon, dark atmosphere' : timeOfDay === 'sunset' ? 'sunset, golden hour, orange sky' : 'day time, sunny, bright, vibrant colors';
-  const biomeDesc = location.biome === 'ice' ? 'frozen, snowy, icebergs' : location.biome === 'tropical' ? 'tropical paradise, palm trees' : location.biome === 'ocean' ? 'open ocean, endless water' : 'nature, forest, trees';
-  
-  // Use location ID as seed to ensure consistency for that location
-  const bgUrl = `https://image.pollinations.ai/prompt/beautiful scenic landscape of ${location.name}, ${biomeDesc}, ${timeDesc}, digital art, highly detailed, game background, atmospheric?width=720&height=1280&nologo=true&seed=${location.id + (timeOfDay === 'night' ? 100 : 0)}`;
+  const timeDesc = timeOfDay === 'night' ? 'night time, starry sky, moon, dark atmosphere, cinematic lighting' : timeOfDay === 'sunset' ? 'sunset, golden hour, orange sky, warm lighting' : 'day time, sunny, bright, vibrant colors, clear sky';
+  const basePrompt = location.visualPrompt || `beautiful scenic landscape of ${location.name}`;
+  const bgUrl = `https://image.pollinations.ai/prompt/${basePrompt}, ${timeDesc}, digital art, highly detailed, game background, atmospheric, 8k resolution, cinematic lighting?width=720&height=1280&nologo=true&seed=${location.id + (timeOfDay === 'night' ? 100 : 0)}`;
 
   return (
     <div className="absolute inset-0 w-full h-full bg-slate-900">
-       {/* Dynamic Background Image */}
-       <img 
-         src={bgUrl} 
-         alt={location.name} 
-         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
-         style={{ opacity: 0.8 }} // Slight transparency to blend with UI
-       />
-       
-       {/* Overlay Gradient to ensure text readability */}
+       <img src={bgUrl} alt={location.name} className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000" style={{ opacity: 0.8 }} />
        <div className={`absolute inset-0 bg-gradient-to-b ${timeOfDay === 'night' ? 'from-black/60 via-transparent to-black/80' : 'from-blue-900/30 via-transparent to-black/60'}`} />
-
        <svg className="w-full h-full absolute inset-0 z-10" preserveAspectRatio="none">
           <defs>
              <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
@@ -203,15 +211,9 @@ const LocationScene: React.FC<{ location: any, theme: { sky: string[], water: st
              </linearGradient>
              <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
           </defs>
-          
-          {/* Water Surface - Kept from original to ensure fishing bobber makes sense */}
           <rect x="0" y="65%" width="100%" height="35%" fill="url(#waterGrad)" />
-          
-          {/* Sun/Moon Reflection on Water */}
           <ellipse cx="85%" cy="70%" rx="30" ry="5" fill={theme.sun} opacity="0.3" filter="url(#glow)" className="animate-pulse" />
        </svg>
-
-       {/* Weather Effects Layer */}
        <svg className="w-full h-full absolute inset-0 z-20 pointer-events-none" preserveAspectRatio="none">
           {weather !== WeatherType.SUNNY && <g>{[...Array(40)].map((_, i) => (<line key={i} x1={Math.random() * 100 + "%"} y1={-20} x2={Math.random() * 100 - 10 + "%"} y2={120 + "%"} stroke="white" strokeWidth={weather === WeatherType.STORM ? 2 : 1} opacity={0.4} className="animate-[fall_0.5s_linear_infinite]" style={{ animationDelay: `${Math.random()}s`, animationDuration: `${0.5 + Math.random() * 0.3}s` }} />))}</g>}
        </svg>
@@ -227,17 +229,8 @@ const FishingRodSystem: React.FC<{ gameState: GameState, rodColor: string, timeO
             <path d="M350,550 L150,150" stroke={rodColor} strokeWidth="6" strokeLinecap="round" />
             <circle cx="250" cy="350" r="3" fill="#333" />
             <circle cx="200" cy="250" r="3" fill="#333" />
-            <path 
-                d={gameState === GameState.CASTING ? "M150,150 Q250,50 350,200" : "M150,150 Q160,300 180,380"} 
-                stroke="rgba(255,255,255,0.6)" 
-                strokeWidth="1.5" 
-                fill="none" 
-                className={gameState === GameState.CASTING ? 'animate-[castLine_0.5s_ease-out_forwards]' : ''}
-            />
-            <g 
-                transform={gameState === GameState.CASTING ? "translate(350, 200)" : "translate(180, 380)"}
-                className={gameState === GameState.CASTING ? 'animate-[castBobber_0.5s_ease-out_forwards]' : ''}
-            >
+            <path d={gameState === GameState.CASTING ? "M150,150 Q250,50 350,200" : "M150,150 Q160,300 180,380"} stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" fill="none" className={gameState === GameState.CASTING ? 'animate-[castLine_0.5s_ease-out_forwards]' : ''} />
+            <g transform={gameState === GameState.CASTING ? "translate(350, 200)" : "translate(180, 380)"} className={gameState === GameState.CASTING ? 'animate-[castBobber_0.5s_ease-out_forwards]' : ''}>
                 <g className={(gameState === GameState.WAITING || gameState === GameState.BITE) ? 'animate-[bob_1.5s_ease-in-out_infinite]' : ''}>
                     <circle r="8" fill="red" stroke="white" strokeWidth="1" />
                     <circle r="8" fill="white" clipPath="inset(50% 0 0 0)" />

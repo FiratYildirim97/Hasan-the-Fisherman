@@ -1,46 +1,79 @@
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useGame } from '../GameContext';
 import { RODS } from '../constants';
-import { ArrowDown, Target, Skull } from 'lucide-react';
+import { Anchor, AlertOctagon, Activity, HelpCircle } from 'lucide-react';
 import { FishRenderer } from './Scene';
+import { WeatherType } from '../types';
 
 export const Minigame: React.FC = () => {
-  const { gameState, activeFish, stats, reelIn, playSound } = useGame();
+  const { gameState, activeFish, stats, reelIn, playSound, weather } = useGame();
   
-  const [tension, setTension] = useState(0);
-  const [distance, setDistance] = useState(50);
-  const [isReeling, setIsReeling] = useState(false);
-  const [fishState, setFishState] = useState<'calm' | 'angry'>('calm');
-  const [qte, setQte] = useState<{ active: boolean; x: number; y: number; id: number } | null>(null);
-
-  const requestRef = useRef<number>(0);
+  // -- REFS (Performance: We use refs instead of state for the animation loop) --
+  const tensionRef = useRef(0);
+  const progressRef = useRef(20);
+  const staminaRef = useRef(100);
   const isReelingRef = useRef(false);
-  const fishStateRef = useRef<'calm' | 'angry'>('calm');
-  const qteRef = useRef<{ active: boolean; timer: number; maxTime: number }>({ active: false, timer: 0, maxTime: 0 });
-  const maxTensionRef = useRef(0); 
+  const requestRef = useRef<number>(0);
 
+  // -- DOM REFS (Direct manipulation avoids React re-renders) --
+  const tensionCircleRef = useRef<SVGCircleElement>(null);
+  const progressCircleRef = useRef<SVGCircleElement>(null);
+  const staminaBarRef = useRef<HTMLDivElement>(null);
+  const staminaTextRef = useRef<HTMLSpanElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const statusTextRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  // -- LOGIC CONSTANTS --
   const params = useRef({
-    tension: 0,
-    distance: 50,
-    maxDistance: 100,
-    reelSpeed: 0.2,
-    tensionRate: 0.5,
-    decayRate: 1.0,
-    fishStrength: 1.0,
+    tensionGain: 0.5,
+    tensionLoss: 1.0,
+    reelSpeedBase: 0.1,
+    escapeSpeedBase: 0.05,
+    staminaDrain: 0.05,
     isBoss: false
   });
 
+  // Helper to update visual color of tension ring
+  const updateTensionColor = (t: number) => {
+      if (!tensionCircleRef.current) return;
+      let color = '#10b981'; // Green
+      if (t > 50) color = '#f59e0b'; // Orange
+      if (t > 80) color = '#ef4444'; // Red
+      tensionCircleRef.current.style.stroke = color;
+      tensionCircleRef.current.style.filter = t > 80 ? `drop-shadow(0 0 10px ${color})` : 'none';
+  };
+
+  const handleDown = (e: React.SyntheticEvent) => { 
+      e.preventDefault(); 
+      if (!isReelingRef.current) { 
+          isReelingRef.current = true; 
+          playSound('cast'); 
+          if (btnRef.current) {
+              btnRef.current.style.transform = 'scale(0.95)';
+              btnRef.current.style.backgroundColor = '#334155'; // slate-700
+              btnRef.current.innerText = 'ÇEKİYOR...';
+          }
+      } 
+  };
+  
+  const handleUp = (e: React.SyntheticEvent) => { 
+      e.preventDefault(); 
+      if (isReelingRef.current) { 
+          isReelingRef.current = false; 
+          if (btnRef.current) {
+              btnRef.current.style.transform = 'scale(1)';
+              btnRef.current.style.backgroundColor = ''; // Reset to class default
+              btnRef.current.innerText = 'SAR!';
+          }
+      } 
+  };
+
   const endGame = useCallback((success: boolean, snapped: boolean) => {
     cancelAnimationFrame(requestRef.current);
-    setQte(null);
-    const perfect = success && maxTensionRef.current < 50 && !params.current.isBoss; // Bosses are never "perfect" easily
-    reelIn(success, snapped, perfect); 
+    reelIn(success, snapped, success && staminaRef.current < 10); 
   }, [reelIn]);
-
-  const handleDown = (e: React.SyntheticEvent) => { e.preventDefault(); if (!isReelingRef.current) { isReelingRef.current = true; setIsReeling(true); playSound('cast'); } };
-  const handleUp = (e: React.SyntheticEvent) => { e.preventDefault(); if (isReelingRef.current) { isReelingRef.current = false; setIsReeling(false); } };
-  const handleQteClick = (e: React.SyntheticEvent) => { e.stopPropagation(); if (qteRef.current.active) { params.current.distance = Math.max(0, params.current.distance - 15); params.current.tension = Math.max(0, params.current.tension - 20); qteRef.current.active = false; setQte(null); playSound('success'); } };
 
   // Initialization
   useEffect(() => {
@@ -49,151 +82,218 @@ export const Minigame: React.FC = () => {
       const rarity = activeFish.rarity;
       const isBoss = activeFish.isBoss || false;
 
-      const startDist = 30 + (rarity * 10) + (isBoss ? 20 : 0);
-      let strength = 0.5 + (rarity * 0.2);
-      if (isBoss) strength *= 2; // Boss is much stronger
-
-      const rodPower = rod.power;
-      const tensionRate = (0.5 * strength) / Math.sqrt(rodPower);
+      let difficultyMod = 1.0;
+      if (weather === WeatherType.RAIN) difficultyMod = 1.1;
+      if (weather === WeatherType.STORM) difficultyMod = 1.25;
 
       params.current = {
-        tension: 0,
-        distance: startDist,
-        maxDistance: startDist + 20,
-        reelSpeed: 0.15 * rodPower,
-        tensionRate: Math.max(0.1, tensionRate),
-        decayRate: 1.5,
-        fishStrength: strength,
+        tensionGain: (0.6 * difficultyMod) / Math.sqrt(rod.power),
+        tensionLoss: 1.2, 
+        reelSpeedBase: 0.15 * Math.sqrt(rod.power), 
+        escapeSpeedBase: (0.08 * rarity) * difficultyMod, 
+        staminaDrain: (0.1 * rod.power) / rarity, 
         isBoss: isBoss
       };
 
+      // Reset Values
+      tensionRef.current = 0;
+      progressRef.current = 20;
+      staminaRef.current = 100;
       isReelingRef.current = false;
-      fishStateRef.current = 'calm';
-      qteRef.current = { active: false, timer: 0, maxTime: 0 };
-      maxTensionRef.current = 0; 
-      
-      setDistance(startDist);
-      setTension(0);
-      setIsReeling(false);
-      setFishState('calm');
-      setQte(null);
     }
-  }, [gameState, activeFish, stats.rodId]); 
+  }, [gameState, activeFish, stats.rodId, weather]);
 
-  // Physics Loop
+  // Main Physics Loop (60 FPS)
   useEffect(() => {
     if (gameState !== 'MINIGAME') { cancelAnimationFrame(requestRef.current); return; }
 
+    let lastStatus = '';
+
     const loop = () => {
-        const p = params.current;
+        const pm = params.current;
+        let t = tensionRef.current;
+        let p = progressRef.current;
+        let s = staminaRef.current;
+
+        // 1. Physics Calculation
+        if (isReelingRef.current) {
+            t += pm.tensionGain;
+            s = Math.max(0, s - (pm.staminaDrain * 0.1));
+        } else {
+            t -= pm.tensionLoss;
+        }
+
+        // Constraints
+        if (t < 0) t = 0;
+        if (t >= 100) { endGame(false, true); return; }
+
+        const riskRewardFactor = 0.2 + (t / 100) * 3.0; // High risk = 3.2x speed
+
+        if (isReelingRef.current) {
+            p += pm.reelSpeedBase * riskRewardFactor;
+            if (t > 70) s = Math.max(0, s - pm.staminaDrain); // Critical damage to fish
+        } else {
+            const fatigueFactor = 0.2 + (s / 100) * 0.8; 
+            p -= pm.escapeSpeedBase * fatigueFactor;
+        }
+
+        if (p < 0) p = 0;
+        if (p >= 100) { endGame(true, false); return; }
+
+        // Update Refs
+        tensionRef.current = t;
+        progressRef.current = p;
+        staminaRef.current = s;
+
+        // 2. Direct DOM Updates (No React Render)
         
-        // Random State Change
-        const angerChance = p.isBoss ? 0.03 : 0.01;
-        if (Math.random() < angerChance) {
-           const newState = fishStateRef.current === 'calm' ? 'angry' : 'calm';
-           fishStateRef.current = newState;
-           setFishState(newState);
+        // Tension Ring (Inner) - Radius 40 -> Circumference ~251
+        if (tensionCircleRef.current) {
+            const circ = 2 * Math.PI * 40;
+            const offset = circ - (t / 100) * circ;
+            tensionCircleRef.current.style.strokeDashoffset = `${offset}px`;
+            updateTensionColor(t);
         }
 
-        const isAngry = fishStateRef.current === 'angry';
-        let angerMult = isAngry ? 2.5 : 1.0;
-        if (p.isBoss && isAngry) angerMult = 3.5; 
-
-        if (isReelingRef.current) { 
-            p.distance -= p.reelSpeed; 
-            p.tension += p.tensionRate * angerMult; 
-        } else { 
-            p.tension -= p.decayRate; 
-            p.distance += (p.isBoss ? 0.1 : 0.05) * angerMult; 
+        // Progress Ring (Outer) - Radius 48 -> Circumference ~301
+        if (progressCircleRef.current) {
+            const circ = 2 * Math.PI * 48;
+            const offset = circ - (p / 100) * circ;
+            progressCircleRef.current.style.strokeDashoffset = `${offset}px`;
         }
 
-        if (p.tension > maxTensionRef.current) maxTensionRef.current = p.tension;
-
-        // QTE Chance
-        if (!qteRef.current.active && !isAngry && p.distance > 15 && p.distance < p.maxDistance - 10 && Math.random() < 0.008) {
-            const time = p.isBoss ? 60 : 90; 
-            qteRef.current = { active: true, timer: time, maxTime: time };
-            setQte({ active: true, x: 10 + Math.random() * 80, y: 10 + Math.random() * 40, id: Date.now() });
-            playSound('click');
+        // Stamina Bar
+        if (staminaBarRef.current) {
+            staminaBarRef.current.style.width = `${s}%`;
+            staminaBarRef.current.style.backgroundColor = s < 30 ? '#ef4444' : '#facc15';
+        }
+        if (staminaTextRef.current) {
+            staminaTextRef.current.innerText = `${Math.ceil(s)}%`;
         }
 
-        if (qteRef.current.active) {
-            qteRef.current.timer--;
-            if (qteRef.current.timer <= 0) { qteRef.current.active = false; setQte(null); }
-        }
-
-        if (p.tension < 0) p.tension = 0;
+        // Shake Effect & Status Text (Throttled text updates)
+        let currentStatus = 'Güvenli Çekim...';
+        let statusColor = 'text-slate-500';
         
-        if (p.tension >= 100) { endGame(false, true); return; }
-        if (p.distance <= 0) { endGame(true, false); return; }
-        if (p.distance >= p.maxDistance) { endGame(false, false); return; }
+        if (t > 80) {
+            currentStatus = 'KOPUYOR! BIRAK!';
+            statusColor = 'text-red-500';
+            if (containerRef.current) containerRef.current.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
+        } else if (t > 50) {
+            currentStatus = 'HIZLI ÇEKİM!';
+            statusColor = 'text-green-400';
+            if (containerRef.current) containerRef.current.style.transform = 'none';
+        } else {
+            if (containerRef.current) containerRef.current.style.transform = 'none';
+        }
 
-        setTension(p.tension);
-        setDistance(p.distance);
+        // Only touch DOM text if changed
+        if (currentStatus !== lastStatus && statusTextRef.current) {
+            statusTextRef.current.className = `font-black text-xl animate-pulse ${statusColor}`;
+            statusTextRef.current.innerText = currentStatus;
+            lastStatus = currentStatus;
+        }
 
         requestRef.current = requestAnimationFrame(loop);
     };
 
     requestRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(requestRef.current);
-  }, [gameState, endGame, playSound]);
+  }, [gameState, endGame]);
 
   if (gameState !== 'MINIGAME') return null;
 
   const isBoss = params.current.isBoss;
 
   return (
-    <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center select-none touch-none overflow-hidden ${isBoss ? 'bg-red-950/80' : 'bg-black/80'} backdrop-blur-sm transition-colors duration-500`}>
-        {isBoss && (
-            <div className="absolute top-10 flex items-center gap-2 animate-pulse">
-                <Skull className="text-red-500" size={32} />
-                <span className="text-red-500 font-black text-2xl tracking-[0.3em] uppercase drop-shadow-[0_0_10px_red]">BOSS FIGHT</span>
-                <Skull className="text-red-500" size={32} />
-            </div>
-        )}
-
-        {qte && (
-            <button className="absolute z-[60] w-20 h-20 flex items-center justify-center animate-[pop_0.2s_ease-out]" style={{ left: `${qte.x}%`, top: `${qte.y}%` }} onMouseDown={handleQteClick} onTouchStart={handleQteClick}>
-                <svg className="absolute inset-0 w-full h-full rotate-[-90deg]"><circle cx="50%" cy="50%" r="36" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="6" /><circle cx="50%" cy="50%" r="36" fill="none" stroke={isBoss ? "#ef4444" : "#fbbf24"} strokeWidth="6" strokeDasharray="226" strokeDashoffset={226 * (1 - (qteRef.current.timer / qteRef.current.maxTime))} className="transition-all duration-75 ease-linear"/></svg>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 border-white active:scale-90 transition-transform ${isBoss ? 'bg-red-600 shadow-[0_0_15px_red]' : 'bg-amber-500 shadow-[0_0_15px_#f59e0b]'}`}><Target size={24} className="text-white animate-spin-slow" /></div>
-            </button>
-        )}
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center select-none touch-none bg-black/80 backdrop-blur-sm">
         
-        <div className="absolute top-24 text-center flex flex-col items-center">
-            <div className={`w-24 h-24 ${isBoss ? 'animate-[shake_0.2s_infinite]' : 'animate-[bounce_2s_infinite]'} drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]`}><FishRenderer visual={activeFish?.visual} /></div>
-            <div className={`font-bold text-xl uppercase tracking-widest transition-colors duration-300 mt-2 ${fishState === 'angry' ? 'text-red-500 scale-110' : 'text-blue-300'}`}>{fishState === 'angry' ? '!! ÖFKELİ !!' : 'ÇEKİLİYOR'}</div>
-            <div className="text-sm text-slate-400 font-mono mt-1">{distance.toFixed(1)}m</div>
+        {/* Boss Indicator */}
+        {isBoss && (
+            <div className="absolute top-16 animate-pulse flex items-center gap-2 z-10">
+                <AlertOctagon className="text-red-500" />
+                <span className="text-red-500 font-black text-2xl tracking-widest drop-shadow-[0_0_10px_red]">BOSS SAVAŞI</span>
+                <AlertOctagon className="text-red-500" />
+            </div>
+        )}
+
+        {/* Fish Stamina Bar (Top) */}
+        <div className="absolute top-28 w-64 z-10">
+            <div className="flex justify-between text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">
+                <span>Balık Gücü</span>
+                <span ref={staminaTextRef} className="text-white">100%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-600">
+                <div ref={staminaBarRef} className="h-full bg-yellow-400 transition-none" style={{ width: '100%' }} />
+            </div>
         </div>
 
-        <div className="flex flex-row items-end gap-8 h-64 mb-10 relative">
-            <div className={`w-12 h-full bg-slate-800 rounded-full border-2 relative overflow-hidden transition-colors duration-200 ${tension > 80 ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'border-slate-600'}`}>
-                <div className={`absolute bottom-0 w-full transition-all duration-75 ease-linear ${tension > 80 ? 'bg-red-600 animate-pulse' : tension > 50 ? 'bg-orange-500' : isBoss ? 'bg-purple-600' : 'bg-green-500'}`} style={{ height: `${tension}%` }} />
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10"><span className="text-white font-black text-sm drop-shadow-md">{Math.round(tension)}%</span></div>
-            </div>
-            <div className="h-full w-2 bg-slate-700/50 rounded-full relative">
-                <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full z-10 ${isBoss ? 'bg-red-500 shadow-[0_0_10px_red]' : 'bg-blue-500 shadow-[0_0_10px_blue]'}`} />
-                <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 w-0.5 ${isBoss ? 'bg-red-400/50' : 'bg-blue-400/50'}`} style={{ height: `${Math.min(100, (distance / params.current.maxDistance) * 100)}%` }} />
-                <div className="absolute left-1/2 -translate-x-1/2 text-2xl transition-all duration-75 z-10" style={{ bottom: `${Math.min(100, (distance / params.current.maxDistance) * 100)}%` }}>{isBoss ? '👹' : '🐟'}</div>
+        {/* MAIN CIRCULAR UI */}
+        <div ref={containerRef} className="relative w-72 h-72 flex items-center justify-center my-8 transition-transform duration-75 will-change-transform">
+            {/* Background Circle */}
+            <div className="absolute inset-0 rounded-full border-8 border-slate-800 bg-slate-900/80 shadow-2xl"></div>
+
+            <svg className="absolute inset-0 w-full h-full rotate-[-90deg] overflow-visible">
+                {/* 1. Tension Arc (Inner - Risk) */}
+                <circle 
+                    ref={tensionCircleRef}
+                    cx="50%" cy="50%" r="40%" fill="none" 
+                    stroke="#10b981" 
+                    strokeWidth="8" 
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 40}px`} 
+                    strokeDashoffset={`${2 * Math.PI * 40}px`}
+                    className="transition-none"
+                />
+                
+                {/* 2. Progress Arc (Outer - Success) */}
+                <circle 
+                    ref={progressCircleRef}
+                    cx="50%" cy="50%" r="48%" fill="none" 
+                    stroke="#3b82f6" 
+                    strokeWidth="6" 
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 48}px`}
+                    strokeDashoffset={`${2 * Math.PI * 48 * 0.8}px`} // Start at 20%
+                    className="transition-none"
+                />
+            </svg>
+
+            {/* Center Icon */}
+            <div className="relative z-10 w-32 h-32 flex items-center justify-center rounded-full">
+                 <div className="absolute inset-0 bg-radial-gradient from-white/10 to-transparent rounded-full animate-pulse"></div>
+                 <div className="w-24 h-24 drop-shadow-2xl">
+                    <FishRenderer visual={activeFish?.visual} />
+                 </div>
             </div>
         </div>
 
-        <button className={`w-32 h-32 rounded-full border-8 shadow-[0_0_30px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center transition-all duration-100 active:scale-95 ${isReeling ? 'bg-red-600 border-red-400 shadow-red-900/50 scale-95' : isBoss ? 'bg-purple-600 border-purple-400 shadow-purple-900/50 animate-[pulse_1s_infinite]' : 'bg-emerald-600 border-emerald-400 shadow-emerald-900/50 animate-[pulse_2s_infinite]'}`} onMouseDown={handleDown} onMouseUp={handleUp} onMouseLeave={handleUp} onTouchStart={handleDown} onTouchEnd={handleUp}>
-            <ArrowDown size={40} className={`text-white mb-1 transition-transform ${isReeling ? 'translate-y-2' : ''}`} />
-            <span className="text-xs font-black text-white tracking-widest">{isReeling ? 'ÇEKİYOR' : 'BASILI TUT'}</span>
+        {/* Status Text (Optimized) */}
+        <div className="h-10 flex items-center justify-center mb-4">
+            <div ref={statusTextRef} className="text-slate-500 text-sm font-medium">Hazır...</div>
+        </div>
+
+        {/* Control Button */}
+        <button 
+            ref={btnRef}
+            className="w-full max-w-xs py-6 rounded-2xl font-black text-2xl tracking-[0.2em] shadow-[0_10px_20px_rgba(0,0,0,0.5)] transition-colors touch-manipulation border-b-8 select-none bg-gradient-to-b from-blue-500 to-blue-700 border-blue-900 text-white"
+            onMouseDown={handleDown} 
+            onMouseUp={handleUp} 
+            onMouseLeave={handleUp} 
+            onTouchStart={handleDown} 
+            onTouchEnd={handleUp}
+        >
+            SAR!
         </button>
         
-        <div className="mt-8 text-center text-slate-400 text-xs font-bold max-w-xs leading-relaxed opacity-80">
-            {isBoss ? (
-                <span className="text-red-400 animate-pulse">DİKKAT! BOSS ÇOK GÜÇLÜ!<br/>Çok kısa aralıklarla çek!</span>
-            ) : (
-                <>Misinayı koparmadan (Kırmızı Bar) balığı kendine çek.<br/><span className="text-yellow-500">Öfkeliyken DUR. Hedef çıkarsa VUR!</span></>
-            )}
+        {/* Tutorial Text */}
+        <div className="mt-6 flex items-start gap-2 max-w-xs text-left bg-slate-900/50 p-3 rounded-xl border border-white/5">
+            <HelpCircle size={16} className="text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-[10px] text-slate-300 leading-relaxed">
+                <span className="text-white font-bold block mb-1">NASIL OYNANIR?</span>
+                Tuşa basılı tutarak ibreyi yükselt. <span className="text-red-400 font-bold">Kırmızı bölgeye</span> yaklaştıkça balık <span className="text-green-400 font-bold">çok daha hızlı</span> gelir. Misinayı koparmadan (%100) limiti zorla!
+            </div>
         </div>
-        <style>{`
-            @keyframes pop { 0% { transform: scale(0); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } } 
-            @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
-        `}</style>
     </div>
   );
 };

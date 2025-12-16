@@ -42,6 +42,7 @@ export interface Location {
   bgGradient: string;
   image: string;
   biome: 'freshwater' | 'coastal' | 'ocean' | 'ice' | 'tropical';
+  visualPrompt?: string; // Specific prompt for AI image generation
 }
 
 export interface Bait {
