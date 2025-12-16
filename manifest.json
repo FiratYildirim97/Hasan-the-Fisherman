@@ -1,0 +1,22 @@
+
+{
+  "name": "Balıkçı Hasan",
+  "short_name": "Balıkçı",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Gelişmiş Balık Tutma Simülasyonu",
+  "icons": [
+    {
+      "src": "https://fav.farm/🎣",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://fav.farm/🎣",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

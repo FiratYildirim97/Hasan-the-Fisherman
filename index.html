@@ -5,7 +5,8 @@
     <meta charset="utf-8" />
     <link rel="icon" href="https://fav.farm/🎣" />
     
-    <!-- iOS / Safari Home Screen Icon Settings -->
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -79,5 +80,14 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => console.log('SW registered: ', registration))
+            .catch(registrationError => console.log('SW registration failed: ', registrationError));
+        });
+      }
+    </script>
   </body>
 </html>

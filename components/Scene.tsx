@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame } from '../GameContext';
 import { RODS, LOCATIONS, BOBBERS } from '../constants';
 import { GameState, WeatherType, FishVisual } from '../types';
-import { Music, Radio } from 'lucide-react';
+import { Music, Radio, Waves } from 'lucide-react';
 
 export const Scene: React.FC = () => {
   const { stats, gameState, weather, toast, floatingTexts, catchVisual, supplyCrate, collectCrate, playSound, timeOfDay, radioStation } = useGame();
@@ -141,8 +141,9 @@ export const Scene: React.FC = () => {
   );
 };
 
-// ... FishRenderer and LocationScene (Keep exactly as original)
 export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
+  const [textureError, setTextureError] = useState(false);
+  
   if (!visual) return <span>🐟</span>;
   const { shape, bodyColor, finColor, pattern } = visual;
   const uniqueId = React.useId();
@@ -168,6 +169,7 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
     default: bodyPath = "M85,35 Q60,10 20,40 Q60,70 85,45 Q95,40 85,35";
   }
   const textureUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Cyprinus_carpio_02.jpg/640px-Cyprinus_carpio_02.jpg";
+  
   return (
     <svg viewBox="0 0 100 80" className="drop-shadow-lg overflow-visible">
       <defs>
@@ -176,8 +178,15 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
         <linearGradient id={`shadow-${uniqueId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="black" stopOpacity="0"/><stop offset="100%" stopColor="black" stopOpacity="0.4"/></linearGradient>
       </defs>
       <path d={bodyPath} fill={bodyColor} />
-      <image href={textureUrl} x="0" y="0" width="100" height="80" preserveAspectRatio="xMidYMid slice" clipPath={`url(#clip-${uniqueId})`} style={{ mixBlendMode: 'overlay', opacity: 0.8 }} />
-      <image href={textureUrl} x="0" y="0" width="100" height="80" preserveAspectRatio="xMidYMid slice" clipPath={`url(#clip-${uniqueId})`} style={{ mixBlendMode: 'luminosity', opacity: 0.4 }} />
+      
+      {/* Texture with fallback */}
+      {!textureError && (
+          <>
+            <image href={textureUrl} x="0" y="0" width="100" height="80" preserveAspectRatio="xMidYMid slice" clipPath={`url(#clip-${uniqueId})`} style={{ mixBlendMode: 'overlay', opacity: 0.8 }} onError={() => setTextureError(true)} />
+            <image href={textureUrl} x="0" y="0" width="100" height="80" preserveAspectRatio="xMidYMid slice" clipPath={`url(#clip-${uniqueId})`} style={{ mixBlendMode: 'luminosity', opacity: 0.4 }} onError={() => setTextureError(true)} />
+          </>
+      )}
+
       {pattern === 'stripes' && <path d="M40,10 V70 M50,10 V70 M60,10 V70" stroke="black" strokeWidth="2" strokeOpacity="0.2" clipPath={`url(#clip-${uniqueId})`} style={{ mixBlendMode: 'multiply' }} />}
       {pattern === 'spots' && <g fill="black" fillOpacity="0.2" clipPath={`url(#clip-${uniqueId})`} style={{ mixBlendMode: 'multiply' }}><circle cx="30" cy="40" r="2" /><circle cx="50" cy="30" r="3" /><circle cx="60" cy="50" r="2" /><circle cx="70" cy="35" r="2" /></g>}
       <path d={bodyPath} fill={`url(#highlight-${uniqueId})`} style={{ mixBlendMode: 'screen' }} />
@@ -195,14 +204,51 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
 };
 
 const LocationScene: React.FC<{ location: any, theme: { sky: string[], water: string[], sun: string }, weather: WeatherType, timeOfDay: string }> = ({ location, theme, weather, timeOfDay }) => {
+  const [imgError, setImgError] = useState(false);
+  
+  // Reset error state when location or time changes to try loading new image
+  useEffect(() => {
+      setImgError(false);
+  }, [location.id, timeOfDay]);
+
   const timeDesc = timeOfDay === 'night' ? 'night time, starry sky, moon, dark atmosphere, cinematic lighting' : timeOfDay === 'sunset' ? 'sunset, golden hour, orange sky, warm lighting' : 'day time, sunny, bright, vibrant colors, clear sky';
   const basePrompt = location.visualPrompt || `beautiful scenic landscape of ${location.name}`;
   const bgUrl = `https://image.pollinations.ai/prompt/${basePrompt}, ${timeDesc}, digital art, highly detailed, game background, atmospheric, 8k resolution, cinematic lighting?width=720&height=1280&nologo=true&seed=${location.id + (timeOfDay === 'night' ? 100 : 0)}`;
 
   return (
     <div className="absolute inset-0 w-full h-full bg-slate-900">
-       <img src={bgUrl} alt={location.name} className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000" style={{ opacity: 0.8 }} />
+       {/* Background Image with Fallback for Offline Mode */}
+       {!imgError ? (
+           <img 
+               src={bgUrl} 
+               alt={location.name} 
+               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000" 
+               style={{ opacity: 0.8 }} 
+               onError={() => setImgError(true)}
+           />
+       ) : (
+           /* Offline Fallback: CSS Gradient based on Theme */
+           <div 
+                className="absolute inset-0 w-full h-full" 
+                style={{ 
+                    background: `linear-gradient(to bottom, ${theme.sky[0]}, ${theme.sky[1]} 60%, ${theme.water[0]} 60%, ${theme.water[1]})` 
+                }}
+           >
+                {/* Simple Sun/Moon for offline mode */}
+                <div 
+                    className="absolute rounded-full blur-xl opacity-60" 
+                    style={{ 
+                        width: '100px', height: '100px', 
+                        top: '10%', right: '10%', 
+                        backgroundColor: theme.sun 
+                    }} 
+                />
+           </div>
+       )}
+       
        <div className={`absolute inset-0 bg-gradient-to-b ${timeOfDay === 'night' ? 'from-black/60 via-transparent to-black/80' : 'from-blue-900/30 via-transparent to-black/60'}`} />
+       
+       {/* Water Overlay (SVG) */}
        <svg className="w-full h-full absolute inset-0 z-10" preserveAspectRatio="none">
           <defs>
              <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
@@ -214,6 +260,8 @@ const LocationScene: React.FC<{ location: any, theme: { sky: string[], water: st
           <rect x="0" y="65%" width="100%" height="35%" fill="url(#waterGrad)" />
           <ellipse cx="85%" cy="70%" rx="30" ry="5" fill={theme.sun} opacity="0.3" filter="url(#glow)" className="animate-pulse" />
        </svg>
+       
+       {/* Weather Effects */}
        <svg className="w-full h-full absolute inset-0 z-20 pointer-events-none" preserveAspectRatio="none">
           {weather !== WeatherType.SUNNY && <g>{[...Array(40)].map((_, i) => (<line key={i} x1={Math.random() * 100 + "%"} y1={-20} x2={Math.random() * 100 - 10 + "%"} y2={120 + "%"} stroke="white" strokeWidth={weather === WeatherType.STORM ? 2 : 1} opacity={0.4} className="animate-[fall_0.5s_linear_infinite]" style={{ animationDelay: `${Math.random()}s`, animationDuration: `${0.5 + Math.random() * 0.3}s` }} />))}</g>}
        </svg>
