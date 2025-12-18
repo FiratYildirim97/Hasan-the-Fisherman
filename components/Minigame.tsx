@@ -4,7 +4,7 @@ import { useGame } from '../GameContext';
 import { RODS } from '../constants';
 import { Anchor, AlertOctagon, Activity, HelpCircle } from 'lucide-react';
 import { FishRenderer } from './Scene';
-import { WeatherType } from '../types';
+import { WeatherType, GameState } from '../types';
 
 export const Minigame: React.FC = () => {
     const { gameState, activeFish, stats, reelIn, playSound, weather } = useGame();
@@ -201,12 +201,12 @@ export const Minigame: React.FC = () => {
         return () => cancelAnimationFrame(requestRef.current);
     }, [gameState, endGame]);
 
-    if (gameState !== 'MINIGAME') return null;
+    if (gameState !== GameState.MINIGAME && gameState !== GameState.BITE) return null;
 
     const isBoss = params.current.isBoss;
 
     return (
-        <div className={`relative flex-1 w-full h-full flex flex-col items-center justify-center p-6 ${gameState === 'BITE' ? 'animate-[shake_0.2s_infinite]' : ''}`}>
+        <div className={`relative flex-1 w-full h-full flex flex-col items-center justify-center p-6 ${gameState === GameState.BITE ? 'animate-[shake_0.2s_infinite]' : ''}`}>
             <div className="absolute inset-0 bg-blue-950/90 pointer-events-none" />
 
             {/* Dynamic Background Ripples */}

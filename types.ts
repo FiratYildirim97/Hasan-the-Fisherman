@@ -56,7 +56,7 @@ export interface Bobber {
   id: string;
   name: string;
   price: number;
-  icon: string; 
+  icon: string;
 }
 
 export interface Decoration {
@@ -95,21 +95,21 @@ export interface FishBase {
   name: string;
   type: ItemType;
   value: number;
-  rarity: number; 
-  emoji: string; 
-  visual?: FishVisual; 
-  isBoss?: boolean; 
+  rarity: number;
+  emoji: string;
+  visual?: FishVisual;
+  isBoss?: boolean;
 }
 
 export interface CatchItem extends FishBase {
   weight: number;
-  id: string; 
+  id: string;
   shiny?: boolean;
   visual: FishVisual;
   perfect?: boolean;
-  golden?: boolean; 
-  masteryLevel?: number; 
-  petName?: string; 
+  golden?: boolean;
+  masteryLevel?: number;
+  petName?: string;
 }
 
 export interface Skill {
@@ -137,8 +137,8 @@ export interface LifetimeStats {
   legendariesCaught: number;
   playTimeMinutes: number;
   shinyCaught: number;
-  goldenCaught: number; 
-  offlineEarnings: number; 
+  goldenCaught: number;
+  offlineEarnings: number;
 }
 
 export interface PlayerStats {
@@ -151,10 +151,10 @@ export interface PlayerStats {
   bagLimit: number;
   aquaLimit: number;
   baitId: string | null;
-  bobberId: string; 
-  bankBalance: number; 
-  pearls: number; 
-  prestigeLevel: number; 
+  bobberId: string;
+  bankBalance: number;
+  pearls: number;
+  prestigeLevel: number;
   wormFarmLevel: number;
   dailyStreak: number;
   lastRewardTime: number;
@@ -165,8 +165,8 @@ export interface PediaEntry {
   count: number;
   maxWeight: number;
   shinyCaught: boolean;
-  goldenCaught: boolean; 
-  donated?: boolean; 
+  goldenCaught: boolean;
+  donated?: boolean;
 }
 
 export interface PetBase {
@@ -176,13 +176,13 @@ export interface PetBase {
   icon: string;
   desc: string;
   bonusType: 'money' | 'xp' | 'catch_rate' | 'discount';
-  bonusValue: number; 
+  bonusValue: number;
 }
 
 export interface OwnedPet {
-  id: string; 
-  hunger: number; 
-  level: number; 
+  id: string;
+  hunger: number;
+  level: number;
   xp: number;
 }
 
@@ -192,7 +192,7 @@ export interface PrestigeUpgrade {
   desc: string;
   cost: number;
   maxLevel: number;
-  effectPerLevel: number; 
+  effectPerLevel: number;
   icon: string;
   type: 'money' | 'xp' | 'luck' | 'power' | 'auto' | 'discount';
 }
@@ -250,8 +250,8 @@ export interface Rival {
   name: string;
   title: string;
   icon: string;
-  difficulty: number; 
-  minLeague: string; 
+  difficulty: number;
+  minLeague: string;
   rewardLP: number;
 }
 
@@ -267,7 +267,7 @@ export interface DuelState {
   active: boolean;
   rivalId: string | null;
   startTime: number;
-  duration: number; 
+  duration: number;
   playerScore: number;
   rivalScore: number;
   finished: boolean;
@@ -294,25 +294,26 @@ export interface SavedGame {
   rodMastery: Record<number, number>;
   ecologyScore: number;
   buffs: { xpBoostExpiry: number; goldenHook: boolean };
-  autoNetLevel: number; 
-  ownedCharms: string[]; 
-  mapParts: number; 
-  spinAvailable: number; 
+  autoNetLevel: number;
+  ownedCharms: string[];
+  mapParts: number;
+  spinAvailable: number;
   settings: {
-      sortMode: 'recent' | 'value' | 'weight'; 
-      bulkSellSafe: boolean; 
+    sortMode: 'recent' | 'value' | 'weight';
+    bulkSellSafe: boolean;
   };
-  ownedPets: OwnedPet[]; 
-  prestigeUpgrades: Record<string, number>; 
+  ownedPets: OwnedPet[];
+  prestigeUpgrades: Record<string, number>;
   radioStation?: RadioStation;
   restaurant?: RestaurantState;
+  isRestaurantOpen?: boolean;
 }
 
 export interface FloatingText {
   id: number;
   text: string;
-  x: number; 
-  y: number; 
+  x: number;
+  y: number;
   color: string;
 }
 
@@ -322,12 +323,12 @@ export interface CatchVisual {
   rarity: number;
   id: number;
   shiny?: boolean;
-  golden?: boolean; 
+  golden?: boolean;
 }
 
 export interface TournamentState {
   active: boolean;
-  timeLeft: number; 
+  timeLeft: number;
   playerScore: number;
   aiScores: { name: string; score: number }[];
   finished: boolean;
@@ -340,7 +341,7 @@ export interface Bounty {
   minWeight: number;
   locId: number;
   reward: number;
-  timeLeft: number; 
+  timeLeft: number;
 }
 
 export interface MarketTrend {
