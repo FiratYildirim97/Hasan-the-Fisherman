@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../GameContext';
 import { RODS, LOCATIONS, BOBBERS } from '../constants';
-import { GameState, WeatherType, FishVisual } from '../types';
+import { GameState, WeatherType, FishVisual, Location } from '../types';
 import { Music, Radio } from 'lucide-react';
 
 export const Scene: React.FC = () => {
@@ -10,17 +10,17 @@ export const Scene: React.FC = () => {
   const location = LOCATIONS[stats.locId];
   const rod = RODS[stats.rodId];
 
-  const [ripples, setRipples] = useState<{id:number, x:number, y:number}[]>([]);
+  const [ripples, setRipples] = useState<{ id: number, x: number, y: number }[]>([]);
 
   const getTheme = () => {
     if (timeOfDay === 'night') return { sky: ['#0f172a', '#312e81'], water: ['#1e1b4b', '#312e81'], sun: '#fcd34d' };
     if (timeOfDay === 'sunset') return { sky: ['#4c1d95', '#fb923c'], water: ['#5b21b6', '#c2410c'], sun: '#fb923c' };
-    
+
     if (location.biome === 'ice') return { sky: ['#e0f2fe', '#bae6fd'], water: ['#0ea5e9', '#0284c7'], sun: '#fdfbf7' };
     if (location.biome === 'tropical') return { sky: ['#06b6d4', '#67e8f9'], water: ['#0891b2', '#22d3ee'], sun: '#fef08a' };
     if (location.biome === 'coastal') return { sky: ['#38bdf8', '#7dd3fc'], water: ['#0369a1', '#0ea5e9'], sun: '#fde047' };
     if (location.biome === 'ocean') return { sky: ['#1e3a8a', '#1e40af'], water: ['#172554', '#1e3a8a'], sun: '#fde047' };
-    
+
     return { sky: ['#0ea5e9', '#bae6fd'], water: ['#0284c7', '#7dd3fc'], sun: '#fde047' };
   };
 
@@ -28,67 +28,67 @@ export const Scene: React.FC = () => {
   const activeBobber = BOBBERS.find(b => b.id === stats.bobberId) || BOBBERS[0];
 
   const handleSceneClick = (e: React.MouseEvent) => {
-      if (gameState === GameState.IDLE) {
-          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-          const x = ((e.clientX - rect.left) / rect.width) * 100;
-          const y = ((e.clientY - rect.top) / rect.height) * 100;
-          
-          if (y > 60) {
-              const id = Date.now();
-              setRipples(prev => [...prev, { id, x, y }]);
-              playSound('splash');
-              setTimeout(() => setRipples(prev => prev.filter(r => r.id !== id)), 1000);
-          }
+    if (gameState === GameState.IDLE) {
+      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+      if (y > 60) {
+        const id = Date.now();
+        setRipples(prev => [...prev, { id, x, y }]);
+        playSound('splash');
+        setTimeout(() => setRipples(prev => prev.filter(r => r.id !== id)), 1000);
       }
+    }
   };
 
   return (
     <div className="relative flex-1 w-full overflow-hidden bg-slate-900 select-none" onClick={handleSceneClick}>
-      <LocationScene 
+      <LocationScene
         location={location}
         theme={theme}
         weather={weather}
         timeOfDay={timeOfDay}
       />
-      
+
       {/* Radio Visual Effects */}
       {radioStation !== 'off' && (
-          <div className="absolute top-16 right-4 pointer-events-none">
-              <div className="relative">
-                 {[...Array(3)].map((_, i) => (
-                    <div 
-                        key={i} 
-                        className={`absolute text-2xl ${radioStation === 'nature' ? 'text-green-400' : 'text-purple-400'} animate-[floatUp_2s_ease-out_infinite]`}
-                        style={{ animationDelay: `${i * 0.7}s`, left: `${i * 10}px` }}
-                    >
-                        {radioStation === 'nature' ? '🍃' : '🎵'}
-                    </div>
-                 ))}
+        <div className="absolute top-16 right-4 pointer-events-none">
+          <div className="relative">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className={`absolute text-2xl ${radioStation === 'nature' ? 'text-green-400' : 'text-purple-400'} animate-[floatUp_2s_ease-out_infinite]`}
+                style={{ animationDelay: `${i * 0.7}s`, left: `${i * 10}px` }}
+              >
+                {radioStation === 'nature' ? '🍃' : '🎵'}
               </div>
+            ))}
           </div>
+        </div>
       )}
 
       {ripples.map(r => (
-          <div key={r.id} className="absolute w-4 h-4 border-2 border-white/50 rounded-full animate-[splash_1s_ease-out] pointer-events-none" style={{ left: `${r.x}%`, top: `${r.y}%` }} />
+        <div key={r.id} className="absolute w-4 h-4 border-2 border-white/50 rounded-full animate-[splash_1s_ease-out] pointer-events-none" style={{ left: `${r.x}%`, top: `${r.y}%` }} />
       ))}
-      
+
       {/* SUPPLY CRATE */}
       {supplyCrate && supplyCrate.active && (
-          <div 
-            className="absolute w-14 h-14 bg-amber-700 border-4 border-amber-900 rounded-lg flex items-center justify-center text-3xl animate-[float_3s_ease-in-out_infinite] cursor-pointer hover:scale-110 active:scale-95 transition-transform shadow-2xl z-40"
-            style={{ left: `${supplyCrate.x}%`, top: `${supplyCrate.y}%` }}
-            onClick={(e) => { e.stopPropagation(); collectCrate(); }}
-          >
-             📦
-             <div className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full animate-ping border border-white" />
-          </div>
+        <div
+          className="absolute w-14 h-14 bg-amber-700 border-4 border-amber-900 rounded-lg flex items-center justify-center text-3xl animate-[float_3s_ease-in-out_infinite] cursor-pointer hover:scale-110 active:scale-95 transition-transform shadow-2xl z-40"
+          style={{ left: `${supplyCrate.x}%`, top: `${supplyCrate.y}%` }}
+          onClick={(e) => { e.stopPropagation(); collectCrate(); }}
+        >
+          📦
+          <div className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full animate-ping border border-white" />
+        </div>
       )}
 
       {catchVisual && (
         <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
           {catchVisual.shiny && <div className="absolute inset-0 bg-white/20 animate-pulse mix-blend-overlay z-10" />}
           {catchVisual.rarity >= 4 && (
-             <div className="absolute bottom-[20%] w-[500px] h-[800px] bg-gradient-to-t from-yellow-400/30 to-transparent clip-triangle origin-bottom animate-[godray_2s_ease-out]" style={{ clipPath: 'polygon(50% 100%, 0% 0%, 100% 0%)' }} />
+            <div className="absolute bottom-[20%] w-[500px] h-[800px] bg-gradient-to-t from-yellow-400/30 to-transparent clip-triangle origin-bottom animate-[godray_2s_ease-out]" style={{ clipPath: 'polygon(50% 100%, 0% 0%, 100% 0%)' }} />
           )}
           <div className="absolute bottom-[20%] animate-[fishRise_1s_cubic-bezier(0.18,0.89,0.32,1.28)_forwards] filter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]" style={{ filter: catchVisual.shiny ? 'hue-rotate(180deg) brightness(1.5) drop-shadow(0 0 20px cyan)' : '' }}>
             <div className="w-48 h-48"><FishRenderer visual={catchVisual.visual} /></div>
@@ -109,9 +109,9 @@ export const Scene: React.FC = () => {
         )}
       </div>
       <div className="absolute top-8 left-1/2 -translate-x-1/2 z-0 flex items-center gap-2 px-5 py-2.5 bg-slate-900/40 backdrop-blur-sm rounded-full border border-white/10 shadow-sm">
-         <span className="text-2xl">{location.icon}</span>
-         <span className="font-bold text-white uppercase tracking-widest text-xs drop-shadow-md">{location.name}</span>
-         <span className="ml-2 text-xl">{weather === WeatherType.STORM ? '⛈️' : weather === WeatherType.RAIN ? '🌧️' : '☀️'}</span>
+        <span className="text-2xl">{location.icon}</span>
+        <span className="font-bold text-white uppercase tracking-widest text-xs drop-shadow-md">{location.name}</span>
+        <span className="ml-2 text-xl">{weather === WeatherType.STORM ? '⛈️' : weather === WeatherType.RAIN ? '🌧️' : '☀️'}</span>
       </div>
       <FishingRodSystem gameState={gameState} rodColor={rod.color} timeOfDay={timeOfDay} bobberIcon={activeBobber.icon} />
       <style>{`
@@ -172,8 +172,8 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
     <svg viewBox="0 0 100 80" className="drop-shadow-lg overflow-visible">
       <defs>
         <clipPath id={`clip-${uniqueId}`}><path d={bodyPath} /></clipPath>
-        <radialGradient id={`highlight-${uniqueId}`} cx="50%" cy="20%" r="60%"><stop offset="0%" stopColor="white" stopOpacity="0.6"/><stop offset="100%" stopColor="white" stopOpacity="0"/></radialGradient>
-        <linearGradient id={`shadow-${uniqueId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="black" stopOpacity="0"/><stop offset="100%" stopColor="black" stopOpacity="0.4"/></linearGradient>
+        <radialGradient id={`highlight-${uniqueId}`} cx="50%" cy="20%" r="60%"><stop offset="0%" stopColor="white" stopOpacity="0.6" /><stop offset="100%" stopColor="white" stopOpacity="0" /></radialGradient>
+        <linearGradient id={`shadow-${uniqueId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="black" stopOpacity="0" /><stop offset="100%" stopColor="black" stopOpacity="0.4" /></linearGradient>
       </defs>
       <path d={bodyPath} fill={bodyColor} />
       <image href={textureUrl} x="0" y="0" width="100" height="80" preserveAspectRatio="xMidYMid slice" clipPath={`url(#clip-${uniqueId})`} style={{ mixBlendMode: 'overlay', opacity: 0.8 }} />
@@ -183,10 +183,10 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
       <path d={bodyPath} fill={`url(#highlight-${uniqueId})`} style={{ mixBlendMode: 'screen' }} />
       <path d={bodyPath} fill={`url(#shadow-${uniqueId})`} style={{ mixBlendMode: 'multiply' }} />
       {shape !== 'round' && shape !== 'coin' && shape !== 'ring' && shape !== 'boot' && shape !== 'can' && (
-         <>
-            <path d="M45,30 L35,10 L55,10 Z" fill={finColor} opacity="0.8" style={{ mixBlendMode: 'multiply' }} transform="translate(10,0)" />
-            <path d="M20,40 L5,25 L5,55 Z" fill={finColor} opacity="0.9" style={{ mixBlendMode: 'multiply' }} />
-         </>
+        <>
+          <path d="M45,30 L35,10 L55,10 Z" fill={finColor} opacity="0.8" style={{ mixBlendMode: 'multiply' }} transform="translate(10,0)" />
+          <path d="M20,40 L5,25 L5,55 Z" fill={finColor} opacity="0.9" style={{ mixBlendMode: 'multiply' }} />
+        </>
       )}
       {shape !== 'boot' && shape !== 'can' && shape !== 'coin' && shape !== 'ring' && (<g transform="translate(75, 35)"><circle r="3.5" fill="#fbbf24" stroke="#92400e" strokeWidth="0.5" /><circle r="1.5" fill="black" /><circle cx="0.8" cy="-0.8" r="0.8" fill="white" /></g>)}
       {pattern === 'shiny' && <circle cx="50" cy="40" r="30" fill="white" opacity="0.5" className="animate-pulse" style={{ mixBlendMode: 'screen' }} />}
@@ -194,29 +194,29 @@ export const FishRenderer: React.FC<{ visual?: FishVisual }> = ({ visual }) => {
   );
 };
 
-const LocationScene: React.FC<{ location: any, theme: { sky: string[], water: string[], sun: string }, weather: WeatherType, timeOfDay: string }> = ({ location, theme, weather, timeOfDay }) => {
+const LocationScene: React.FC<{ location: Location, theme: { sky: string[], water: string[], sun: string }, weather: WeatherType, timeOfDay: string }> = ({ location, theme, weather, timeOfDay }) => {
   const timeDesc = timeOfDay === 'night' ? 'night time, starry sky, moon, dark atmosphere, cinematic lighting' : timeOfDay === 'sunset' ? 'sunset, golden hour, orange sky, warm lighting' : 'day time, sunny, bright, vibrant colors, clear sky';
   const basePrompt = location.visualPrompt || `beautiful scenic landscape of ${location.name}`;
   const bgUrl = `https://image.pollinations.ai/prompt/${basePrompt}, ${timeDesc}, digital art, highly detailed, game background, atmospheric, 8k resolution, cinematic lighting?width=720&height=1280&nologo=true&seed=${location.id + (timeOfDay === 'night' ? 100 : 0)}`;
 
   return (
     <div className="absolute inset-0 w-full h-full bg-slate-900">
-       <img src={bgUrl} alt={location.name} className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000" style={{ opacity: 0.8 }} />
-       <div className={`absolute inset-0 bg-gradient-to-b ${timeOfDay === 'night' ? 'from-black/60 via-transparent to-black/80' : 'from-blue-900/30 via-transparent to-black/60'}`} />
-       <svg className="w-full h-full absolute inset-0 z-10" preserveAspectRatio="none">
-          <defs>
-             <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
-               <stop offset="0%" stopColor={theme.water[0]} stopOpacity="0.7"/>
-               <stop offset="100%" stopColor={theme.water[1]} stopOpacity="0.9"/>
-             </linearGradient>
-             <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
-          <rect x="0" y="65%" width="100%" height="35%" fill="url(#waterGrad)" />
-          <ellipse cx="85%" cy="70%" rx="30" ry="5" fill={theme.sun} opacity="0.3" filter="url(#glow)" className="animate-pulse" />
-       </svg>
-       <svg className="w-full h-full absolute inset-0 z-20 pointer-events-none" preserveAspectRatio="none">
-          {weather !== WeatherType.SUNNY && <g>{[...Array(40)].map((_, i) => (<line key={i} x1={Math.random() * 100 + "%"} y1={-20} x2={Math.random() * 100 - 10 + "%"} y2={120 + "%"} stroke="white" strokeWidth={weather === WeatherType.STORM ? 2 : 1} opacity={0.4} className="animate-[fall_0.5s_linear_infinite]" style={{ animationDelay: `${Math.random()}s`, animationDuration: `${0.5 + Math.random() * 0.3}s` }} />))}</g>}
-       </svg>
+      <img src={bgUrl} alt={location.name} className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000" style={{ opacity: 0.8 }} />
+      <div className={`absolute inset-0 bg-gradient-to-b ${timeOfDay === 'night' ? 'from-black/60 via-transparent to-black/80' : 'from-blue-900/30 via-transparent to-black/60'}`} />
+      <svg className="w-full h-full absolute inset-0 z-10" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={theme.water[0]} stopOpacity="0.7" />
+            <stop offset="100%" stopColor={theme.water[1]} stopOpacity="0.9" />
+          </linearGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur" /><feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        </defs>
+        <rect x="0" y="65%" width="100%" height="35%" fill="url(#waterGrad)" />
+        <ellipse cx="85%" cy="70%" rx="30" ry="5" fill={theme.sun} opacity="0.3" filter="url(#glow)" className="animate-pulse" />
+      </svg>
+      <svg className="w-full h-full absolute inset-0 z-20 pointer-events-none" preserveAspectRatio="none">
+        {weather !== WeatherType.SUNNY && <g>{[...Array(40)].map((_, i) => (<line key={i} x1={Math.random() * 100 + "%"} y1={-20} x2={Math.random() * 100 - 10 + "%"} y2={120 + "%"} stroke="white" strokeWidth={weather === WeatherType.STORM ? 2 : 1} opacity={0.4} className="animate-[fall_0.5s_linear_infinite]" style={{ animationDelay: `${Math.random()}s`, animationDuration: `${0.5 + Math.random() * 0.3}s` }} />))}</g>}
+      </svg>
     </div>
   );
 };
@@ -226,25 +226,25 @@ const FishingRodSystem: React.FC<{ gameState: GameState, rodColor: string, timeO
     <div className="absolute inset-0 z-30 pointer-events-none">
       <svg width="100%" height="100%" viewBox="0 0 400 500" preserveAspectRatio="xMidYMax slice">
         <g className={`transition-transform duration-700 origin-[350px_450px] ${gameState === GameState.CASTING ? 'rotate-[-35deg]' : ''}`}>
-            <path d="M350,550 L150,150" stroke={rodColor} strokeWidth="6" strokeLinecap="round" />
-            <circle cx="250" cy="350" r="3" fill="#333" />
-            <circle cx="200" cy="250" r="3" fill="#333" />
-            <path d={gameState === GameState.CASTING ? "M150,150 Q250,50 350,200" : "M150,150 Q160,300 180,380"} stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" fill="none" className={gameState === GameState.CASTING ? 'animate-[castLine_0.5s_ease-out_forwards]' : ''} />
-            <g transform={gameState === GameState.CASTING ? "translate(350, 200)" : "translate(180, 380)"} className={gameState === GameState.CASTING ? 'animate-[castBobber_0.5s_ease-out_forwards]' : ''}>
-                <g className={(gameState === GameState.WAITING || gameState === GameState.BITE) ? 'animate-[bob_1.5s_ease-in-out_infinite]' : ''}>
-                    <circle r="8" fill="red" stroke="white" strokeWidth="1" />
-                    <circle r="8" fill="white" clipPath="inset(50% 0 0 0)" />
-                </g>
-                {(gameState === GameState.WAITING || gameState === GameState.BITE) && (
-                    <g className="animate-[sinkHook_3s_ease-out_forwards]">
-                        <line x1="0" y1="0" x2="0" y2="100" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="2 2" />
-                        <g transform="translate(0, 100)">
-                            <path d="M-3,-5 Q0,0 3,-5 M0,-5 V5 Q0,10 4,8" stroke="silver" fill="none" strokeWidth="1.5" />
-                            <circle r="2" fill="yellow" className="animate-pulse" /> 
-                        </g>
-                    </g>
-                )}
+          <path d="M350,550 L150,150" stroke={rodColor} strokeWidth="6" strokeLinecap="round" />
+          <circle cx="250" cy="350" r="3" fill="#333" />
+          <circle cx="200" cy="250" r="3" fill="#333" />
+          <path d={gameState === GameState.CASTING ? "M150,150 Q250,50 350,200" : "M150,150 Q160,300 180,380"} stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" fill="none" className={gameState === GameState.CASTING ? 'animate-[castLine_0.5s_ease-out_forwards]' : ''} />
+          <g transform={gameState === GameState.CASTING ? "translate(350, 200)" : "translate(180, 380)"} className={gameState === GameState.CASTING ? 'animate-[castBobber_0.5s_ease-out_forwards]' : ''}>
+            <g className={(gameState === GameState.WAITING || gameState === GameState.BITE) ? 'animate-[bob_1.5s_ease-in-out_infinite]' : ''}>
+              <circle r="8" fill="red" stroke="white" strokeWidth="1" />
+              <circle r="8" fill="white" clipPath="inset(50% 0 0 0)" />
             </g>
+            {(gameState === GameState.WAITING || gameState === GameState.BITE) && (
+              <g className="animate-[sinkHook_3s_ease-out_forwards]">
+                <line x1="0" y1="0" x2="0" y2="100" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="2 2" />
+                <g transform="translate(0, 100)">
+                  <path d="M-3,-5 Q0,0 3,-5 M0,-5 V5 Q0,10 4,8" stroke="silver" fill="none" strokeWidth="1.5" />
+                  <circle r="2" fill="yellow" className="animate-pulse" />
+                </g>
+              </g>
+            )}
+          </g>
         </g>
       </svg>
     </div>
