@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useGame } from '../GameContext';
+import { useGame, AQUARIUM_PASSIVE_RATE, AQUARIUM_PASSIVE_INTERVAL } from '../GameContext';
 import { RODS, BAITS, BOBBERS, DECORATIONS, CHARMS, SKILLS, LOCATIONS, FISH_DB, ACHIEVEMENTS, PETS, PRESTIGE_UPGRADES, CRAFTING_RECIPES, RIVALS, LEAGUES, WHEEL_REWARDS } from '../constants';
 import { Briefcase, ShoppingCart, Map, BookOpen, ScrollText, Anchor, Settings, X, Fish, Recycle, Volume2, VolumeX, Trophy, Crown, Target, TrendingUp, Sparkles, Droplets, Zap, Utensils, RefreshCw, Landmark, SlidersHorizontal, ArrowUpDown, Bell, Waves, PawPrint, Star, Hammer, Gem, Radio, Music, Dices, CalendarCheck, Menu, ChefHat, ShoppingBag, Store, Info, HandHeart, Swords, Moon, Scale, Trash2, Siren, Shovel } from 'lucide-react';
 import { Modal } from './Modal';
@@ -113,6 +113,11 @@ export const UIOverlay: React.FC = () => {
     // Wheel State
     const [wheelRotation, setWheelRotation] = useState(0);
     const [isWheelSpinning, setIsWheelSpinning] = useState(false);
+
+    const aquariumPassivePerMinute = Math.floor(
+        aquarium.reduce((sum, item) => sum + item.value * AQUARIUM_PASSIVE_RATE * (60000 / AQUARIUM_PASSIVE_INTERVAL), 0)
+        * (Date.now() < filterExpiry ? 1.2 : 1)
+    );
 
     useEffect(() => {
         if (setIsRestaurantOpen) setIsRestaurantOpen(activeModal === 'restaurant');
@@ -446,6 +451,13 @@ export const UIOverlay: React.FC = () => {
                     <button onClick={cleanAquarium} className="flex-1 py-3 bg-cyan-700 hover:bg-cyan-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2">
                         <Sparkles size={16} /> {Date.now() < filterExpiry ? 'TEMİZ (Bonus Aktif)' : 'TEMİZLE (250 TL)'}
                     </button>
+                </div>
+                <div className="mb-3 p-3 bg-slate-800/60 border border-cyan-900/40 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div className="font-bold text-sm text-cyan-100">Pasif Gelir</div>
+                        <div className="text-xs text-cyan-400/70">Balıklar dakika başına otomatik kazanç sağlıyor.</div>
+                    </div>
+                    <div className="text-green-300 font-mono font-bold">{aquariumPassivePerMinute} TL/dk</div>
                 </div>
                 <div className="space-y-2">
                     {aquarium.map(item => (

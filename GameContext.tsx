@@ -7,6 +7,9 @@ import {
 } from './types';
 import { RODS, FISH_DB, BAITS, BOBBERS, CHARMS, ACHIEVEMENTS, PRESTIGE_UPGRADES, CRAFTING_RECIPES, RIVALS, WHEEL_REWARDS, LOCATIONS } from './constants';
 
+export const AQUARIUM_PASSIVE_RATE = 0.005;
+export const AQUARIUM_PASSIVE_INTERVAL = 15000;
+
 interface GameContextType {
   stats: PlayerStats;
   bag: CatchItem[];
@@ -347,6 +350,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => clearInterval(crateInterval);
   }, [supplyCrate, gameState]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!aquarium.length) return;
+
+      const baseIncome = aquarium.reduce((sum: number, item: CatchItem) => sum + item.value * AQUARIUM_PASSIVE_RATE, 0);
+      const bonusMultiplier = Date.now() < filterExpiry ? 1.2 : 1;
+      const income = Math.max(0, Math.floor(baseIncome * bonusMultiplier));
+
+      if (income > 0) {
+        setStats((s: PlayerStats) => ({ ...s, money: s.money + income }));
+      }
+    }, AQUARIUM_PASSIVE_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [aquarium, filterExpiry]);
 
   // ... (Existing Functions: showToast, spawnText, playSound, castRod, etc.) ...
   // Keeping existing code short for brevity, assuming standard implementation follows...
